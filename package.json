@@ -1,0 +1,16 @@
+{
+  "name": "inventory",
+  "version": "1.0.0",
+  "description": "A full-stack inventory management system for small to medium enterprises built with Go, SQLite, and HTMX.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "playwright": "^1.58.2"
+  }
+}

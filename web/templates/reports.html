@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en" hx-ext="modal">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - Inventory Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"></script>
+    <style>
+        .htmx-indicator { opacity: 0; transition: opacity 200ms; }
+        .htmx-request .htmx-indicator { opacity: 1; }
+        .stat-card { border-left: 4px solid; }
+        .stat-card.primary { border-color: #0d6efd; }
+        .stat-card.success { border-color: #198754; }
+        .stat-card.warning { border-color: #ffc107; }
+        .stat-card.danger { border-color: #dc3545; }
+    </style>
+</head>
+<body hx-ext="modal" hx-indicator="body">
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h5><i class="bi bi-box-seam"></i> <span class="sidebar-text">IMS</span></h5>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/dashboard" class="nav-link">
+                <i class="bi bi-grid-1x2"></i> <span class="sidebar-text">Dashboard</span>
+            </a>
+            <a href="/products" class="nav-link">
+                <i class="bi bi-box"></i> <span class="sidebar-text">Products</span>
+            </a>
+            <a href="/categories" class="nav-link">
+                <i class="bi bi-tags"></i> <span class="sidebar-text">Categories</span>
+            </a>
+            <a href="/inventory" class="nav-link">
+                <i class="bi bi-clipboard-data"></i> <span class="sidebar-text">Inventory</span>
+            </a>
+            <div class="nav-section-title">Production</div>
+            <a href="/bom" class="nav-link">
+                <i class="bi bi-diagram-3"></i> <span class="sidebar-text">Bill of Materials</span>
+            </a>
+            <a href="/production" class="nav-link">
+                <i class="bi bi-hammer"></i> <span class="sidebar-text">Production Orders</span>
+            </a>
+            <div class="nav-section-title">Procurement</div>
+            <a href="/suppliers" class="nav-link">
+                <i class="bi bi-truck"></i> <span class="sidebar-text">Suppliers</span>
+            </a>
+            <a href="/purchase-orders" class="nav-link">
+                <i class="bi bi-receipt"></i> <span class="sidebar-text">Purchase Orders</span>
+            </a>
+            <div class="nav-section-title">Analytics</div>
+            <a href="/transactions" class="nav-link">
+                <i class="bi bi-arrow-left-right"></i> <span class="sidebar-text">Transactions</span>
+            </a>
+            <a href="/reports" class="nav-link active">
+                <i class="bi bi-graph-up"></i> <span class="sidebar-text">Reports</span>
+            </a>
+            <div class="nav-section-title">System</div>
+            <a href="/settings" class="nav-link">
+                <i class="bi bi-gear"></i> <span class="sidebar-text">Settings</span>
+            </a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        <header class="topbar">
+            <button class="btn btn-link toggle-btn" id="toggleSidebar">
+                <i class="bi bi-list"></i>
+            </button>
+            <div class="topbar-title">
+                <h4>Reports</h4>
+            </div>
+            <div class="topbar-actions">
+                <button class="theme-toggle" id="themeToggle" title="Toggle Theme">
+                    <i class="bi bi-sun"></i>
+                    <i class="bi bi-moon"></i>
+                </button>
+                <div class="dropdown">
+                    <button class="user-dropdown" data-bs-toggle="dropdown" id="userDropdown">
+                        <div class="user-avatar">A</div>
+                        <span id="currentUser">Admin</span>
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="/settings"><i class="bi bi-gear"></i> Settings</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" id="logoutBtn"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+        
+        <main class="content">
+            <div class="page-header">
+                <h4 class="mb-0">Inventory Reports</h4>
+                <button class="btn btn-success" onclick="exportStockLevels()">
+                    <i class="bi bi-download"></i> Export CSV
+                </button>
+            </div>
+
+            <ul class="nav nav-tabs mb-3" id="reportTabs" role="tablist">
+                <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#stockLevels">Stock Levels</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#valuation">Valuation</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#lowStock">Low Stock</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#turnover">Turnover</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#categories">Categories</button></li>
+            </ul>
+
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="stockLevels">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>SKU</th>
+                                            <th>Product</th>
+                                            <th>Category</th>
+                                            <th>Quantity</th>
+                                            <th>Reorder Point</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="stockLevelsBody">
+                                        <tr><td colspan="6" class="text-center py-4"><div class="spinner-border"></div></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="valuation">
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Inventory Value: <span id="totalValue" class="text-success">$0.00</span></h5>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>SKU</th>
+                                            <th>Product</th>
+                                            <th>Quantity</th>
+                                            <th>Unit Cost</th>
+                                            <th>Total Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="valuationBody">
+                                        <tr><td colspan="5" class="text-center py-4"><div class="spinner-border"></div></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="lowStock">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>SKU</th>
+                                            <th>Product</th>
+                                            <th>Current Stock</th>
+                                            <th>Reorder Point</th>
+                                            <th>Quantity Needed</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="lowStockBody">
+                                        <tr><td colspan="5" class="text-center py-4"><div class="spinner-border"></div></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="turnover">
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">Start Date</label>
+                                    <input type="date" class="form-control" id="turnoverStart" onchange="loadTurnover()">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">End Date</label>
+                                    <input type="date" class="form-control" id="turnoverEnd" onchange="loadTurnover()">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Total In</th>
+                                            <th>Total Out</th>
+                                            <th>Net Change</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="turnoverBody">
+                                        <tr><td colspan="4" class="text-center py-4"><div class="spinner-border"></div></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="categories">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Category</th>
+                                            <th>Product Count</th>
+                                            <th>Total Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="categoriesBody">
+                                        <tr><td colspan="3" class="text-center py-4"><div class="spinner-border"></div></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // Initialize theme on page load
+        (function initTheme() {
+            const saved = localStorage.getItem('ims-theme');
+            if (saved) {
+                document.documentElement.setAttribute('data-theme', saved);
+            } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+
+        function getToken() { return localStorage.getItem('token'); }
+        
+        async function apiCall(url, options = {}) {
+            const headers = { 'Content-Type': 'application/json', ...options.headers };
+            const token = getToken();
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const response = await fetch(url, { ...options, headers });
+            if (response.status === 401) { window.location.href = '/login'; throw new Error('Unauthorized'); }
+            if (!response.ok) { const err = await response.json(); throw new Error(err.error || 'Error'); }
+            return response.json();
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type} border-0 show`;
+            toast.innerHTML = `<div class="d-flex"><div class="toast-body">${message}</div><button class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        async function loadStockLevels() {
+            try {
+                const data = await apiCall('/api/reports/stock-levels');
+                const tbody = document.getElementById('stockLevelsBody');
+                if (!data.length) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No data</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.map(item => {
+                    let badgeClass = 'bg-success';
+                    if (item.status === 'Out of Stock') badgeClass = 'bg-danger';
+                    else if (item.status === 'Low Stock') badgeClass = 'bg-warning';
+                    return `<tr>
+                        <td><code>${item.sku}</code></td>
+                        <td>${item.product_name}</td>
+                        <td>${item.category_name || '-'}</td>
+                        <td>${item.quantity}</td>
+                        <td>${item.reorder_point}</td>
+                        <td><span class="badge ${badgeClass}">${item.status}</span></td>
+                    </tr>`;
+                }).join('');
+            } catch (err) { console.error(err); }
+        }
+
+        async function loadValuation() {
+            try {
+                const data = await apiCall('/api/reports/valuation');
+                document.getElementById('totalValue').textContent = formatCurrency(data.total_value);
+                const tbody = document.getElementById('valuationBody');
+                if (!data.items.length) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">No data</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.items.map(item => `<tr>
+                    <td><code>${item.sku}</code></td>
+                    <td>${item.product_name}</td>
+                    <td>${item.quantity}</td>
+                    <td>${formatCurrency(item.unit_cost)}</td>
+                    <td>${formatCurrency(item.total_value)}</td>
+                </tr>`).join('');
+            } catch (err) { console.error(err); }
+        }
+
+        async function loadLowStock() {
+            try {
+                const data = await apiCall('/api/reports/low-stock');
+                const tbody = document.getElementById('lowStockBody');
+                if (!data.length) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">All items are well stocked</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.map(item => `<tr>
+                    <td><code>${item.sku}</code></td>
+                    <td>${item.product_name}</td>
+                    <td><span class="badge bg-warning">${item.current_stock}</span></td>
+                    <td>${item.reorder_point}</td>
+                    <td><span class="badge bg-danger">${item.needed}</span></td>
+                </tr>`).join('');
+            } catch (err) { console.error(err); }
+        }
+
+        async function loadTurnover() {
+            try {
+                const start = document.getElementById('turnoverStart').value;
+                const end = document.getElementById('turnoverEnd').value;
+                let url = '/api/reports/turnover?';
+                if (start) url += `start_date=${start}&`;
+                if (end) url += `end_date=${end}`;
+                const data = await apiCall(url);
+                const tbody = document.getElementById('turnoverBody');
+                if (!data.length) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted">No transactions in this period</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.map(item => `<tr>
+                    <td>${item.date}</td>
+                    <td class="text-success">+${item.total_in}</td>
+                    <td class="text-danger">-${item.total_out}</td>
+                    <td class="${item.net_change >= 0 ? 'text-success' : 'text-danger'}">${item.net_change >= 0 ? '+' : ''}${item.net_change}</td>
+                </tr>`).join('');
+            } catch (err) { console.error(err); }
+        }
+
+        async function loadCategories() {
+            try {
+                const data = await apiCall('/api/reports/category-breakdown');
+                const tbody = document.getElementById('categoriesBody');
+                if (!data.length) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-muted">No categories</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.map(item => `<tr>
+                    <td>${item.category_name}</td>
+                    <td>${item.product_count}</td>
+                    <td>${formatCurrency(item.total_value)}</td>
+                </tr>`).join('');
+            } catch (err) { console.error(err); }
+        }
+
+        function exportStockLevels() {
+            window.open('/api/reports/export/stock-levels', '_blank');
+        }
+
+        document.querySelectorAll('#reportTabs .nav-link').forEach(tab => {
+            tab.addEventListener('shown.bs.tab', (e) => {
+                const target = e.target.getAttribute('data-bs-target');
+                if (target === '#stockLevels') loadStockLevels();
+                else if (target === '#valuation') loadValuation();
+                else if (target === '#lowStock') loadLowStock();
+                else if (target === '#turnover') loadTurnover();
+                else if (target === '#categories') loadCategories();
+            });
+        });
+
+        const today = new Date();
+        const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+        document.getElementById('turnoverEnd').value = today.toISOString().split('T')[0];
+        document.getElementById('turnoverStart').value = lastMonth.toISOString().split('T')[0];
+
+        document.getElementById('logoutBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        });
+
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+            try { 
+                const user = JSON.parse(userStr);
+                document.getElementById('currentUser').textContent = user.username;
+                document.querySelector('.user-avatar').textContent = user.username.charAt(0).toUpperCase();
+            } catch (e) {}
+        }
+
+        document.getElementById('toggleSidebar').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+        });
+
+        document.getElementById('themeToggle')?.addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('ims-theme', next);
+        });
+
+        loadStockLevels();
+    </script>
+</body>
+</html>

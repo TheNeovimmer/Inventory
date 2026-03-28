@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en" hx-ext="modal">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purchase Orders - Inventory Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"></script>
+    <style>
+        .htmx-indicator { opacity: 0; transition: opacity 200ms; }
+        .htmx-request .htmx-indicator { opacity: 1; }
+        .status-pending { background-color: #ffc107; color: #000; }
+        .status-ordered { background-color: #0dcaf0; color: #000; }
+        .status-received { background-color: #198754; color: #fff; }
+        .status-cancelled { background-color: #6c757d; color: #fff; }
+    </style>
+</head>
+<body hx-ext="modal" hx-indicator="body">
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h5><i class="bi bi-box-seam"></i> <span class="sidebar-text">IMS</span></h5>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/dashboard" class="nav-link">
+                <i class="bi bi-grid-1x2"></i> <span class="sidebar-text">Dashboard</span>
+            </a>
+            <a href="/products" class="nav-link">
+                <i class="bi bi-box"></i> <span class="sidebar-text">Products</span>
+            </a>
+            <a href="/categories" class="nav-link">
+                <i class="bi bi-tags"></i> <span class="sidebar-text">Categories</span>
+            </a>
+            <a href="/inventory" class="nav-link">
+                <i class="bi bi-clipboard-data"></i> <span class="sidebar-text">Inventory</span>
+            </a>
+            <div class="nav-section-title">Production</div>
+            <a href="/bom" class="nav-link">
+                <i class="bi bi-diagram-3"></i> <span class="sidebar-text">Bill of Materials</span>
+            </a>
+            <a href="/production" class="nav-link">
+                <i class="bi bi-hammer"></i> <span class="sidebar-text">Production Orders</span>
+            </a>
+            <div class="nav-section-title">Procurement</div>
+            <a href="/suppliers" class="nav-link">
+                <i class="bi bi-truck"></i> <span class="sidebar-text">Suppliers</span>
+            </a>
+            <a href="/purchase-orders" class="nav-link active">
+                <i class="bi bi-receipt"></i> <span class="sidebar-text">Purchase Orders</span>
+            </a>
+            <div class="nav-section-title">Analytics</div>
+            <a href="/transactions" class="nav-link">
+                <i class="bi bi-arrow-left-right"></i> <span class="sidebar-text">Transactions</span>
+            </a>
+            <a href="/reports" class="nav-link">
+                <i class="bi bi-graph-up"></i> <span class="sidebar-text">Reports</span>
+            </a>
+            <div class="nav-section-title">System</div>
+            <a href="/settings" class="nav-link">
+                <i class="bi bi-gear"></i> <span class="sidebar-text">Settings</span>
+            </a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        <header class="topbar">
+            <button class="btn btn-link toggle-btn" id="toggleSidebar">
+                <i class="bi bi-list"></i>
+            </button>
+            <div class="topbar-title">
+                <h4>Purchase Orders</h4>
+            </div>
+            <div class="topbar-actions">
+                <button class="theme-toggle" id="themeToggle" title="Toggle Theme">
+                    <i class="bi bi-sun"></i>
+                    <i class="bi bi-moon"></i>
+                </button>
+                <div class="dropdown">
+                    <button class="user-dropdown" data-bs-toggle="dropdown" id="userDropdown">
+                        <div class="user-avatar">A</div>
+                        <span id="currentUser">Admin</span>
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="/settings"><i class="bi bi-gear"></i> Settings</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" id="logoutBtn"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+        
+        <main class="content">
+            <div class="page-header">
+                <h4 class="mb-0">Purchase Orders</h4>
+                <button class="btn btn-primary" onclick="showPOModal()">
+                    <i class="bi bi-plus-lg"></i> New Purchase Order
+                </button>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <select class="form-select" id="filterStatus" onchange="loadPurchaseOrders()">
+                                <option value="">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="ordered">Ordered</option>
+                                <option value="received">Received</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="poTable">
+                            <thead>
+                                <tr>
+                                    <th>PO #</th>
+                                    <th>Supplier</th>
+                                    <th>Order Date</th>
+                                    <th>Expected</th>
+                                    <th>Total</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="poTableBody">
+                                <tr><td colspan="7" class="text-center py-4"><div class="spinner-border"></div></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal fade" id="poModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">New Purchase Order</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="poForm" onsubmit="savePO(event)">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Supplier *</label>
+                                <select class="form-select" id="poSupplier" required></select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Expected Date</label>
+                                <input type="date" class="form-control" id="poExpectedDate">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" id="poNotes" rows="2"></textarea>
+                        </div>
+                        <hr>
+                        <h6>Order Items</h6>
+                        <div id="poItems">
+                            <div class="row g-3 mb-2 po-item-row">
+                                <div class="col-md-5">
+                                    <select class="form-select po-product" required></select>
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="number" class="form-control po-qty" placeholder="Qty" min="1" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="number" class="form-control po-cost" placeholder="Unit Cost" step="0.01" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="text" class="form-control po-total" placeholder="Total" readonly>
+                                </div>
+                                <div class="col-md-1">
+                                    <button type="button" class="btn btn-outline-danger" onclick="removePOItem(this)">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="addPOItem()">
+                            <i class="bi bi-plus"></i> Add Item
+                        </button>
+                        <div class="mt-3 text-end">
+                            <strong>Total: $<span id="poGrandTotal">0.00</span></strong>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Create PO</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="poDetailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Purchase Order Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="poDetailContent">
+                    Loading...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // Initialize theme on page load
+        (function initTheme() {
+            const saved = localStorage.getItem('ims-theme');
+            if (saved) {
+                document.documentElement.setAttribute('data-theme', saved);
+            } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+
+        let purchaseOrders = [];
+        let suppliers = [];
+        let products = [];
+
+        function getToken() { return localStorage.getItem('token'); }
+        
+        async function apiCall(url, options = {}) {
+            const headers = { 'Content-Type': 'application/json', ...options.headers };
+            const token = getToken();
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const response = await fetch(url, { ...options, headers });
+            if (response.status === 401) { window.location.href = '/login'; throw new Error('Unauthorized'); }
+            if (!response.ok) { const err = await response.json(); throw new Error(err.error || 'Error'); }
+            return response.json();
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
+        }
+
+        function formatDate(date) {
+            if (!date) return '-';
+            return new Date(date).toLocaleDateString();
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type} border-0 show`;
+            toast.innerHTML = `<div class="d-flex"><div class="toast-body">${message}</div><button class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        async function loadPurchaseOrders() {
+            try {
+                const status = document.getElementById('filterStatus').value;
+                const url = status ? `/api/purchase-orders?status=${status}` : '/api/purchase-orders';
+                purchaseOrders = await apiCall(url);
+                renderPurchaseOrders();
+            } catch (err) { showToast('Failed to load purchase orders', 'danger'); }
+        }
+
+        async function loadSuppliersAndProducts() {
+            try {
+                suppliers = await apiCall('/api/suppliers');
+                products = await apiCall('/api/products');
+                initPOModal();
+            } catch (err) { showToast('Failed to load data', 'danger'); }
+        }
+
+        function initPOModal() {
+            const supplierSelect = document.getElementById('poSupplier');
+            supplierSelect.innerHTML = '<option value="">Select Supplier</option>' + 
+                suppliers.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            
+            document.querySelectorAll('.po-product').forEach(select => {
+                select.innerHTML = '<option value="">Select Product</option>' + 
+                    products.map(p => `<option value="${p.id}">${p.name} (${p.sku})</option>`).join('');
+            });
+        }
+
+        function addPOItem() {
+            const container = document.getElementById('poItems');
+            const row = document.createElement('div');
+            row.className = 'row g-3 mb-2 po-item-row';
+            row.innerHTML = `
+                <div class="col-md-5">
+                    <select class="form-select po-product" required></select>
+                </div>
+                <div class="col-md-2">
+                    <input type="number" class="form-control po-qty" placeholder="Qty" min="1" required onchange="calcItemTotal(this)">
+                </div>
+                <div class="col-md-2">
+                    <input type="number" class="form-control po-cost" placeholder="Unit Cost" step="0.01" required onchange="calcItemTotal(this)">
+                </div>
+                <div class="col-md-2">
+                    <input type="text" class="form-control po-total" placeholder="Total" readonly>
+                </div>
+                <div class="col-md-1">
+                    <button type="button" class="btn btn-outline-danger" onclick="removePOItem(this)">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>`;
+            container.appendChild(row);
+            row.querySelector('.po-product').innerHTML = '<option value="">Select Product</option>' + 
+                products.map(p => `<option value="${p.id}">${p.name} (${p.sku})</option>`).join('');
+        }
+
+        function removePOItem(btn) {
+            const rows = document.querySelectorAll('.po-item-row');
+            if (rows.length > 1) btn.closest('.po-item-row').remove();
+            calcGrandTotal();
+        }
+
+        function calcItemTotal(input) {
+            const row = input.closest('.po-item-row');
+            const qty = parseFloat(row.querySelector('.po-qty').value) || 0;
+            const cost = parseFloat(row.querySelector('.po-cost').value) || 0;
+            row.querySelector('.po-total').value = (qty * cost).toFixed(2);
+            calcGrandTotal();
+        }
+
+        function calcGrandTotal() {
+            let total = 0;
+            document.querySelectorAll('.po-item-row').forEach(row => {
+                total += parseFloat(row.querySelector('.po-total').value) || 0;
+            });
+            document.getElementById('poGrandTotal').textContent = total.toFixed(2);
+        }
+
+        function renderPurchaseOrders() {
+            const tbody = document.getElementById('poTableBody');
+            if (!purchaseOrders.length) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No purchase orders found</td></tr>';
+                return;
+            }
+            tbody.innerHTML = purchaseOrders.map(po => {
+                let statusClass = 'status-' + po.status;
+                return `
+                <tr>
+                    <td><strong>#${po.id}</strong></td>
+                    <td>${po.supplier_name || '-'}</td>
+                    <td>${formatDate(po.order_date)}</td>
+                    <td>${formatDate(po.expected_date)}</td>
+                    <td>${formatCurrency(po.total)}</td>
+                    <td><span class="badge ${statusClass}">${po.status}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="viewPODetail(${po.id})" title="View">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        ${po.status === 'pending' ? `<button class="btn btn-sm btn-outline-info" onclick="updatePOStatus(${po.id}, 'ordered')" title="Mark Ordered"><i class="bi bi-send"></i></button>` : ''}
+                        ${po.status === 'ordered' ? `<button class="btn btn-sm btn-outline-success" onclick="receivePO(${po.id})" title="Receive"><i class="bi bi-check-circle"></i></button>` : ''}
+                    </td>
+                </tr>`}).join('');
+        }
+
+        async function viewPODetail(id) {
+            try {
+                const po = await apiCall(`/api/purchase-orders/${id}`);
+                const modal = new bootstrap.Modal(document.getElementById('poDetailModal'));
+                document.getElementById('poDetailContent').innerHTML = `
+                    <div class="row mb-3">
+                        <div class="col-md-6"><strong>PO #:</strong> ${po.id}</div>
+                        <div class="col-md-6"><strong>Supplier:</strong> ${po.supplier?.name || '-'}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6"><strong>Order Date:</strong> ${formatDate(po.order_date)}</div>
+                        <div class="col-md-6"><strong>Expected Date:</strong> ${formatDate(po.expected_date)}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6"><strong>Status:</strong> <span class="badge status-${po.status}">${po.status}</span></div>
+                        <div class="col-md-6"><strong>Total:</strong> ${formatCurrency(po.total)}</div>
+                    </div>
+                    ${po.notes ? `<div class="mb-3"><strong>Notes:</strong> ${po.notes}</div>` : ''}
+                    <hr>
+                    <h6>Items</h6>
+                    <table class="table table-sm">
+                        <thead><tr><th>Product</th><th>Qty</th><th>Unit Cost</th><th>Total</th></tr></thead>
+                        <tbody>
+                            ${(po.items || []).map(item => `
+                                <tr>
+                                    <td>${item.product?.name || 'N/A'}</td>
+                                    <td>${item.quantity}</td>
+                                    <td>${formatCurrency(item.unit_cost)}</td>
+                                    <td>${formatCurrency(item.quantity * item.unit_cost)}</td>
+                                </tr>`).join('')}
+                        </tbody>
+                    </table>
+                `;
+                modal.show();
+            } catch (err) { showToast('Failed to load PO details', 'danger'); }
+        }
+
+        function showPOModal() {
+            document.getElementById('poForm').reset();
+            document.getElementById('poItems').innerHTML = '';
+            addPOItem();
+            document.getElementById('poGrandTotal').textContent = '0.00';
+            new bootstrap.Modal(document.getElementById('poModal')).show();
+        }
+
+        async function savePO(e) {
+            e.preventDefault();
+            const items = [];
+            document.querySelectorAll('.po-item-row').forEach(row => {
+                items.push({
+                    product_id: parseInt(row.querySelector('.po-product').value),
+                    quantity: parseInt(row.querySelector('.po-qty').value),
+                    unit_cost: parseFloat(row.querySelector('.po-cost').value)
+                });
+            });
+            const data = {
+                supplier_id: parseInt(document.getElementById('poSupplier').value),
+                expected_date: document.getElementById('poExpectedDate').value || null,
+                notes: document.getElementById('poNotes').value,
+                items: items
+            };
+            try {
+                await apiCall('/api/purchase-orders', { method: 'POST', body: JSON.stringify(data) });
+                showToast('Purchase order created');
+                bootstrap.Modal.getInstance(document.getElementById('poModal')).hide();
+                loadPurchaseOrders();
+            } catch (err) { showToast(err.message, 'danger'); }
+        }
+
+        async function updatePOStatus(id, status) {
+            try {
+                await apiCall(`/api/purchase-orders/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) });
+                showToast('Status updated');
+                loadPurchaseOrders();
+            } catch (err) { showToast(err.message, 'danger'); }
+        }
+
+        async function receivePO(id) {
+            if (!confirm('Receive this purchase order? Stock will be added to inventory.')) return;
+            try {
+                await apiCall(`/api/purchase-orders/${id}/receive`, { method: 'POST' });
+                showToast('Purchase order received, inventory updated');
+                loadPurchaseOrders();
+            } catch (err) { showToast(err.message, 'danger'); }
+        }
+
+        document.getElementById('themeToggle')?.addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('ims-theme', next);
+        });
+        document.getElementById('logoutBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        });
+
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+            try { 
+                const user = JSON.parse(userStr);
+                document.getElementById('currentUser').textContent = user.username;
+                const avatar = document.querySelector('.user-avatar');
+                if (avatar) avatar.textContent = user.username.charAt(0).toUpperCase();
+            } catch (e) {}
+        }
+
+        document.getElementById('toggleSidebar').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+        });
+
+        loadSuppliersAndProducts();
+        loadPurchaseOrders();
+    </script>
+</body>
+</html>

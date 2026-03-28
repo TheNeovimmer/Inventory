@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en" hx-ext="modal">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Products - Inventory Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"></script>
+    <style>
+        .htmx-indicator { opacity: 0; transition: opacity 200ms; }
+        .htmx-request .htmx-indicator { opacity: 1; }
+    </style>
+</head>
+<body hx-ext="modal" hx-indicator="body">
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h5><i class="bi bi-box-seam"></i> <span class="sidebar-text">IMS</span></h5>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/dashboard" class="nav-link">
+                <i class="bi bi-grid-1x2"></i> <span class="sidebar-text">Dashboard</span>
+            </a>
+            <a href="/products" class="nav-link active">
+                <i class="bi bi-box"></i> <span class="sidebar-text">Products</span>
+            </a>
+            <a href="/categories" class="nav-link">
+                <i class="bi bi-tags"></i> <span class="sidebar-text">Categories</span>
+            </a>
+            <a href="/inventory" class="nav-link">
+                <i class="bi bi-clipboard-data"></i> <span class="sidebar-text">Inventory</span>
+            </a>
+            <div class="nav-section-title">Production</div>
+            <a href="/bom" class="nav-link">
+                <i class="bi bi-diagram-3"></i> <span class="sidebar-text">Bill of Materials</span>
+            </a>
+            <a href="/production" class="nav-link">
+                <i class="bi bi-hammer"></i> <span class="sidebar-text">Production Orders</span>
+            </a>
+            <div class="nav-section-title">Procurement</div>
+            <a href="/suppliers" class="nav-link">
+                <i class="bi bi-truck"></i> <span class="sidebar-text">Suppliers</span>
+            </a>
+            <a href="/purchase-orders" class="nav-link">
+                <i class="bi bi-receipt"></i> <span class="sidebar-text">Purchase Orders</span>
+            </a>
+            <div class="nav-section-title">Analytics</div>
+            <a href="/transactions" class="nav-link">
+                <i class="bi bi-arrow-left-right"></i> <span class="sidebar-text">Transactions</span>
+            </a>
+            <a href="/reports" class="nav-link">
+                <i class="bi bi-graph-up"></i> <span class="sidebar-text">Reports</span>
+            </a>
+            <div class="nav-section-title">System</div>
+            <a href="/settings" class="nav-link">
+                <i class="bi bi-gear"></i> <span class="sidebar-text">Settings</span>
+            </a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        <header class="topbar">
+            <button class="btn btn-link toggle-btn" id="toggleSidebar">
+                <i class="bi bi-list"></i>
+            </button>
+            <div class="topbar-title">
+                <h4>Products</h4>
+            </div>
+            <div class="topbar-actions">
+                <button class="theme-toggle" id="themeToggle" title="Toggle Theme">
+                    <i class="bi bi-sun"></i>
+                    <i class="bi bi-moon"></i>
+                </button>
+                <div class="dropdown">
+                    <button class="user-dropdown" data-bs-toggle="dropdown" id="userDropdown">
+                        <div class="user-avatar">A</div>
+                        <span id="currentUser">Admin</span>
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="/settings"><i class="bi bi-gear"></i> Settings</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" id="logoutBtn"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+        
+        <main class="content">
+            <div class="page-header">
+                <h4 class="mb-0">Products</h4>
+                <button class="btn btn-primary" onclick="showProductModal()">
+                    <i class="bi bi-plus-lg"></i> Add Product
+                </button>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <input type="text" class="form-control" placeholder="Search products..." id="searchInput" onkeyup="filterProducts()">
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="productsTable">
+                            <thead>
+                                <tr>
+                                    <th>SKU</th>
+                                    <th>Product Name</th>
+                                    <th>Category</th>
+                                    <th>Price</th>
+                                    <th>Stock</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productsTableBody">
+                                <tr><td colspan="7" class="text-center py-4"><div class="spinner-border"></div></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="productModalTitle">Add Product</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="productForm" onsubmit="saveProduct(event)">
+                    <div class="modal-body">
+                        <input type="hidden" id="productId">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">SKU *</label>
+                                <input type="text" class="form-control" id="productSKU" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Name *</label>
+                                <input type="text" class="form-control" id="productName" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" id="productDesc" rows="2"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Category</label>
+                                <select class="form-select" id="productCategory"></select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Barcode</label>
+                                <input type="text" class="form-control" id="productBarcode">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Unit Price *</label>
+                                <input type="number" class="form-control" id="productPrice" step="0.01" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Cost Price</label>
+                                <input type="number" class="form-control" id="productCost" step="0.01">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Reorder Point</label>
+                                <input type="number" class="form-control" id="productReorder" value="10">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">&nbsp;</label>
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" id="productBOM">
+                                    <label class="form-check-label" for="productBOM">Has BOM</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Product</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="adjustModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Adjust Stock</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="adjustForm" onsubmit="adjustStock(event)">
+                    <div class="modal-body">
+                        <input type="hidden" id="adjustProductId">
+                        <p id="adjustProductName" class="fw-medium mb-3"></p>
+                        <div class="mb-3">
+                            <label class="form-label">Adjustment Type</label>
+                            <select class="form-select" id="adjustType" required>
+                                <option value="in">Stock In (+)</option>
+                                <option value="out">Stock Out (-)</option>
+                                <option value="adjustment">Set Quantity</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Quantity</label>
+                            <input type="number" class="form-control" id="adjustQty" min="0" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" id="adjustNotes" rows="2"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Adjust Stock</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // Initialize theme on page load
+        (function initTheme() {
+            const saved = localStorage.getItem('ims-theme');
+            if (saved) {
+                document.documentElement.setAttribute('data-theme', saved);
+            } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+
+        let products = [];
+        let categories = [];
+
+        function getToken() { return localStorage.getItem('token'); }
+        
+        async function apiCall(url, options = {}) {
+            const headers = { 'Content-Type': 'application/json', ...options.headers };
+            const token = getToken();
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const response = await fetch(url, { ...options, headers });
+            if (response.status === 401) { window.location.href = '/login'; throw new Error('Unauthorized'); }
+            if (!response.ok) { const err = await response.json(); throw new Error(err.error || 'Error'); }
+            return response.json();
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type} border-0 show`;
+            toast.innerHTML = `<div class="d-flex"><div class="toast-body">${message}</div><button class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        async function loadProducts() {
+            try {
+                products = await apiCall('/api/products');
+                renderProducts();
+            } catch (err) { showToast('Failed to load products', 'danger'); }
+        }
+
+        async function loadCategories() {
+            try {
+                categories = await apiCall('/api/categories');
+                const select = document.getElementById('productCategory');
+                select.innerHTML = '<option value="">Select Category</option>' + 
+                    categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            } catch (err) { console.error(err); }
+        }
+
+        function renderProducts() {
+            const tbody = document.getElementById('productsTableBody');
+            if (!products.length) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No products found</td></tr>';
+                return;
+            }
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = products.filter(p => 
+                p.name.toLowerCase().includes(searchTerm) || 
+                p.sku.toLowerCase().includes(searchTerm)
+            );
+            tbody.innerHTML = filtered.map(p => {
+                let stockClass = 'stock-ok';
+                let status = 'In Stock';
+                if (p.quantity <= 0) { stockClass = 'stock-out'; status = 'Out of Stock'; }
+                else if (p.quantity <= p.reorder_point) { stockClass = 'stock-low'; status = 'Low Stock'; }
+                return `
+                    <tr>
+                        <td><code>${p.sku}</code></td>
+                        <td>${p.name}</td>
+                        <td>${p.category_name || '-'}</td>
+                        <td>${formatCurrency(p.unit_price)}</td>
+                        <td><span class="badge stock-badge ${stockClass}">${p.quantity}</span></td>
+                        <td>${p.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="openAdjust(${p.id}, '${p.name}')" title="Adjust Stock">
+                                <i class="bi bi-plus-slash-minus"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="editProduct(${p.id})" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteProduct(${p.id})" title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>`;
+            }).join('');
+        }
+
+        function filterProducts() { renderProducts(); }
+
+        function showProductModal() {
+            document.getElementById('productId').value = '';
+            document.getElementById('productModalTitle').textContent = 'Add Product';
+            document.getElementById('productForm').reset();
+            new bootstrap.Modal(document.getElementById('productModal')).show();
+        }
+
+        function editProduct(id) {
+            const p = products.find(x => x.id === id);
+            if (!p) return;
+            document.getElementById('productId').value = p.id;
+            document.getElementById('productModalTitle').textContent = 'Edit Product';
+            document.getElementById('productSKU').value = p.sku;
+            document.getElementById('productName').value = p.name;
+            document.getElementById('productDesc').value = p.description || '';
+            document.getElementById('productCategory').value = p.category_id || '';
+            document.getElementById('productBarcode').value = p.barcode || '';
+            document.getElementById('productPrice').value = p.unit_price;
+            document.getElementById('productCost').value = p.cost_price || '';
+            document.getElementById('productReorder').value = p.reorder_point;
+            document.getElementById('productBOM').checked = p.has_bom;
+            new bootstrap.Modal(document.getElementById('productModal')).show();
+        }
+
+        async function saveProduct(e) {
+            e.preventDefault();
+            const id = document.getElementById('productId').value;
+            const data = {
+                sku: document.getElementById('productSKU').value,
+                name: document.getElementById('productName').value,
+                description: document.getElementById('productDesc').value,
+                category_id: document.getElementById('productCategory').value ? parseInt(document.getElementById('productCategory').value) : null,
+                barcode: document.getElementById('productBarcode').value,
+                unit_price: parseFloat(document.getElementById('productPrice').value),
+                cost_price: parseFloat(document.getElementById('productCost').value) || 0,
+                reorder_point: parseInt(document.getElementById('productReorder').value) || 10,
+                has_bom: document.getElementById('productBOM').checked
+            };
+            try {
+                if (id) {
+                    await apiCall(`/api/products/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+                    showToast('Product updated');
+                } else {
+                    await apiCall('/api/products', { method: 'POST', body: JSON.stringify(data) });
+                    showToast('Product created');
+                }
+                bootstrap.Modal.getInstance(document.getElementById('productModal')).hide();
+                loadProducts();
+            } catch (err) { showToast(err.message, 'danger'); }
+        }
+
+        async function deleteProduct(id) {
+            if (!confirm('Delete this product?')) return;
+            try {
+                await apiCall(`/api/products/${id}`, { method: 'DELETE' });
+                showToast('Product deleted');
+                loadProducts();
+            } catch (err) { showToast(err.message, 'danger'); }
+        }
+
+        function openAdjust(id, name) {
+            document.getElementById('adjustProductId').value = id;
+            document.getElementById('adjustProductName').textContent = name;
+            document.getElementById('adjustQty').value = '';
+            document.getElementById('adjustNotes').value = '';
+            new bootstrap.Modal(document.getElementById('adjustModal')).show();
+        }
+
+        async function adjustStock(e) {
+            e.preventDefault();
+            try {
+                await apiCall('/api/inventory/adjust', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        product_id: parseInt(document.getElementById('adjustProductId').value),
+                        quantity: parseInt(document.getElementById('adjustQty').value),
+                        type: document.getElementById('adjustType').value,
+                        notes: document.getElementById('adjustNotes').value
+                    })
+                });
+                showToast('Stock adjusted');
+                bootstrap.Modal.getInstance(document.getElementById('adjustModal')).hide();
+                loadProducts();
+            } catch (err) { showToast(err.message, 'danger'); }
+        }
+
+        document.getElementById('logoutBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        });
+
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+            try { 
+                const user = JSON.parse(userStr);
+                document.getElementById('currentUser').textContent = user.username;
+                document.querySelector('.user-avatar').textContent = user.username.charAt(0).toUpperCase();
+            } catch (e) {}
+        }
+
+        document.getElementById('toggleSidebar').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+        });
+
+        document.getElementById('themeToggle')?.addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('ims-theme', next);
+        });
+
+        loadCategories();
+        loadProducts();
+    </script>
+</body>
+</html>
