@@ -1,0 +1,324 @@
+{% extends "layout.html" %}
+
+{% block title %}Analytics - Inventory Management{% endblock %}
+{% block page_title %}Analytics{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <div class="header-content">
+            <h2><i class="bi bi-graph-up-arrow"></i> Advanced Analytics</h2>
+            <p class="text-muted">Deep insights into your inventory performance</p>
+        </div>
+        <div class="header-actions">
+            <select class="form-select" id="analyticsPeriod" onchange="loadAnalytics()">
+                <option value="7">Last 7 days</option>
+                <option value="30" selected>Last 30 days</option>
+                <option value="90">Last 90 days</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-primary">
+                    <i class="bi bi-box-seam"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="kpiProducts">-</div>
+                    <div class="stat-label">Total Products</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-success">
+                    <i class="bi bi-currency-dollar"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="kpiValue">-</div>
+                    <div class="stat-label">Total Value</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="kpiLowStock">-</div>
+                    <div class="stat-label">Low Stock</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-info">
+                    <i class="bi bi-arrow-repeat"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="kpiTurnover">-</div>
+                    <div class="stat-label">Avg Daily Trans</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card h-100">
+                <div class="card-header">
+                    <i class="bi bi-graph-up me-2"></i>Transaction Trends
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="trendsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <i class="bi bi-pie-chart me-2"></i>Value by Category
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-trophy me-2"></i>Top Movers
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm" id="topMoversTable">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>In</th>
+                                    <th>Out</th>
+                                    <th>Net</th>
+                                </tr>
+                            </thead>
+                            <tbody id="topMoversBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-lightning me-2"></i>ABC Analysis
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm" id="abcTable">
+                            <thead>
+                                <tr>
+                                    <th>Class</th>
+                                    <th>Product</th>
+                                    <th>Value</th>
+                                    <th>%</th>
+                                </tr>
+                            </thead>
+                            <tbody id="abcBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-exclamation-octagon me-2"></i>Predictive Low Stock Alerts
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm" id="predictionsTable">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Current Stock</th>
+                                    <th>Daily Usage</th>
+                                    <th>Days Left</th>
+                                    <th>Recommended Order</th>
+                                </tr>
+                            </thead>
+                            <tbody id="predictionsBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let trendsChart = null;
+let categoryChartInstance = null;
+
+async function loadAnalytics() {
+    try {
+        const data = await apiCall('/api/analytics/dashboard');
+        
+        document.getElementById('kpiProducts').textContent = data.kpi.total_products || 0;
+        document.getElementById('kpiValue').textContent = formatCurrency(data.kpi.total_value || 0);
+        document.getElementById('kpiLowStock').textContent = data.kpi.low_stock_count || 0;
+        document.getElementById('kpiTurnover').textContent = Math.round(data.kpi.avg_daily_trans || 0);
+
+        renderTrendsChart(data.trends);
+        renderCategoryChart(data.category_data);
+        renderTopMovers(data.top_movers);
+        renderABC(data.abc_analysis);
+        renderPredictions(data.low_stock);
+    } catch (err) {
+        showToast('Failed to load analytics', 'danger');
+    }
+}
+
+function renderTrendsChart(trends) {
+    const ctx = document.getElementById('trendsChart');
+    if (!ctx) return;
+    
+    if (trendsChart) trendsChart.destroy();
+    
+    trendsChart = new Chart(ctx.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: trends.map(t => t.date.substring(5)),
+            datasets: [
+                {
+                    label: 'Stock In',
+                    data: trends.map(t => t.stock_in),
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: 'Stock Out',
+                    data: trends.map(t => t.stock_out),
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'top' } },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+}
+
+function renderCategoryChart(data) {
+    const ctx = document.getElementById('categoryChart');
+    if (!ctx) return;
+    
+    if (categoryChartInstance) categoryChartInstance.destroy();
+    
+    categoryChartInstance = new Chart(ctx.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: data.map(d => d.category_name),
+            datasets: [{
+                data: data.map(d => d.total_value),
+                backgroundColor: ['#0d9488', '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#8b5cf6'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '60%',
+            plugins: { legend: { position: 'bottom' } }
+        }
+    });
+}
+
+function renderTopMovers(movers) {
+    const tbody = document.getElementById('topMoversBody');
+    if (!movers || movers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No data</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = movers.slice(0, 5).map(m => `
+        <tr>
+            <td>${m.product_name}</td>
+            <td class="text-success">+${m.total_in}</td>
+            <td class="text-danger">-${m.total_out}</td>
+            <td class="${m.net_change >= 0 ? 'text-success' : 'text-danger'}">${m.net_change >= 0 ? '+' : ''}${m.net_change}</td>
+        </tr>
+    `).join('');
+}
+
+function renderABC(abc) {
+    const tbody = document.getElementById('abcBody');
+    if (!abc || abc.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No data</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = abc.map(a => `
+        <tr>
+            <td><span class="badge bg-${a.class === 'A' ? 'success' : (a.class === 'B' ? 'warning' : 'secondary')}">${a.class}</span></td>
+            <td>${a.product_name}</td>
+            <td>${formatCurrency(a.total_value)}</td>
+            <td>${a.percentage.toFixed(1)}%</td>
+        </tr>
+    `).join('');
+}
+
+async function renderPredictions(lowStock) {
+    const tbody = document.getElementById('predictionsBody');
+    
+    try {
+        const predictions = await apiCall('/api/analytics/predict-low-stock');
+        
+        if (!predictions || predictions.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">All stock levels healthy</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = predictions.map(p => `
+            <tr>
+                <td>${p.product_name}</td>
+                <td>${p.current_stock}</td>
+                <td>${p.daily_usage.toFixed(1)}</td>
+                <td class="${p.days_until_stockout < 7 ? 'text-danger' : (p.days_until_stockout < 14 ? 'text-warning' : '')}">
+                    ${p.days_until_stockout.toFixed(0)} days
+                </td>
+                <td>${p.recommended_order_date}</td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Failed to load predictions</td></tr>';
+    }
+}
+
+loadAnalytics();
+</script>
+{% endblock %}

@@ -49,3 +49,8 @@ Thumbs.db
 # Build outputs
 /dist/
 /build/
+
+# Playwright
+/tests/playwright-report/
+/tests/test-results/
+playwright.config.js

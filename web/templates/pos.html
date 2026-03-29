@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS - Posly</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+    
+    <!-- Posly CSS -->
+    <link rel="stylesheet" href="/static/css/posly.css">
+    
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"></script>
+    
+    <style>
+        body { overflow: hidden; }
+        .pos-layout { display: grid; grid-template-columns: 1fr 420px; height: 100vh; }
+        .pos-products-panel { padding: 20px; overflow-y: auto; background: var(--bg-main); }
+        .pos-cart-panel { background: var(--bg-card); border-left: 1px solid var(--border); display: flex; flex-direction: column; height: 100%; }
+        
+        @media (max-width: 992px) {
+            .pos-layout { grid-template-columns: 1fr; }
+            .pos-cart-panel { display: none; }
+            .pos-cart-panel.show { display: flex; position: fixed; inset: 0; z-index: 1000; }
+        }
+    </style>
+</head>
+<body hx-indicator="body" data-theme="light">
+    <div class="pos-layout">
+        <!-- Products Panel -->
+        <div class="pos-products-panel">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h4 class="mb-0"><i class="bi bi-cart-check text-primary me-2"></i>Point of Sale</h4>
+                    <small class="text-muted">Fast & easy checkout</small>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="/dashboard" class="btn btn-light btn-sm">
+                        <i class="bi bi-arrow-left"></i> Back
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Search & Barcode -->
+            <div class="d-flex gap-3 mb-4">
+                <div class="search-box flex-grow-1">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="productSearch" class="form-control" placeholder="Search products by name, SKU, or barcode..." onkeyup="searchProducts(this.value)">
+                </div>
+                <input type="text" id="barcodeInput" class="form-control barcode-input" placeholder="Scan barcode..." style="width: 180px;" onkeyup="handleBarcode(event)">
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="quick-actions-row">
+                <button class="btn btn-sm btn-light" onclick="showAllProducts()">
+                    <i class="bi bi-grid"></i> All
+                </button>
+                <button class="btn btn-sm btn-light" onclick="showRecentProducts()">
+                    <i class="bi bi-clock-history"></i> Recent
+                </button>
+                <button class="btn btn-sm btn-light" onclick="showLowStockProducts()">
+                    <i class="bi bi-exclamation-triangle text-warning"></i> Low Stock
+                </button>
+            </div>
+            
+            <!-- Categories -->
+            <div class="category-filters" id="categoriesList">
+                <span class="category-chip active" onclick="filterCategory(0, this)">All</span>
+            </div>
+            
+            <!-- Products Grid -->
+            <div class="pos-product-grid" id="productsGrid">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary"></div>
+                    <p class="mt-3 text-muted">Loading products...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Cart Panel -->
+        <div class="pos-cart-panel" id="cartPanel">
+            <div class="cart-header">
+                <div>
+                    <h5 class="mb-0"><i class="bi bi-cart3 me-2 text-primary"></i>Current Sale</h5>
+                    <small class="text-muted" id="cartItemCount">0 items</small>
+                </div>
+                <button class="btn btn-sm btn-light btn-icon" onclick="clearCart()" title="Clear Cart">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+            
+            <!-- Customer Select -->
+            <div class="px-3 py-2" style="border-bottom: 1px solid var(--border);">
+                <select class="form-select form-select-sm" id="customerSelect" onchange="updateCustomer()">
+                    <option value="">Walk-in Customer</option>
+                </select>
+            </div>
+            
+            <!-- Cart Items -->
+            <div class="cart-items" id="cartItems">
+                <div class="empty-state py-5">
+                    <i class="bi bi-cart-x"></i>
+                    <h5>Cart is empty</h5>
+                    <p>Add products to start a sale</p>
+                </div>
+            </div>
+            
+            <!-- Cart Summary -->
+            <div class="cart-summary">
+                <div class="cart-summary-row">
+                    <span class="text-muted">Subtotal</span>
+                    <span id="cartSubtotal">$0.00</span>
+                </div>
+                <div class="cart-summary-row">
+                    <span class="text-muted">Tax (<span id="taxRateDisplay">0</span>%)</span>
+                    <span id="cartTax">$0.00</span>
+                </div>
+                <div class="cart-summary-row">
+                    <span class="text-muted">Discount</span>
+                    <span class="text-danger" id="cartDiscount">-$0.00</span>
+                </div>
+                <div class="cart-summary-row total">
+                    <span>Total</span>
+                    <span class="amount" id="cartTotal">$0.00</span>
+                </div>
+            </div>
+            
+            <!-- Quick Amounts -->
+            <div class="px-3 py-2" style="border-top: 1px solid var(--border);">
+                <small class="text-muted d-block mb-2">Quick Amount</small>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-light flex-fill" onclick="setAmount(10)">$10</button>
+                    <button class="btn btn-sm btn-light flex-fill" onclick="setAmount(20)">$20</button>
+                    <button class="btn btn-sm btn-light flex-fill" onclick="setAmount(50)">$50</button>
+                    <button class="btn btn-sm btn-light flex-fill" onclick="setAmount(100)">$100</button>
+                </div>
+            </div>
+            
+            <!-- Payment Section -->
+            <div class="payment-section" style="margin: 0; border-radius: 0;">
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label small text-muted">Payment Method</label>
+                        <select class="form-select form-select-sm" id="paymentMethod">
+                            <option value="cash">💵 Cash</option>
+                            <option value="card">💳 Card</option>
+                            <option value="transfer">🏦 Transfer</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small text-muted">Amount Paid</label>
+                        <input type="number" id="amountPaid" class="form-control form-control-sm" value="0" min="0" step="0.01">
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">Change</span>
+                    <span class="fw-bold" id="changeAmount">$0.00</span>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="d-flex gap-2">
+                    <button class="btn btn-success flex-fill btn-lg" onclick="processSale()">
+                        <i class="bi bi-check-circle"></i> Complete
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="saveQuotation()" title="Save Quotation">
+                        <i class="bi bi-file-earmark"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="printReceipt()" title="Print Receipt">
+                        <i class="bi bi-printer"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile Cart Toggle -->
+        <button class="btn btn-primary d-lg-none position-fixed" style="bottom: 20px; right: 20px; width: 60px; height: 60px; border-radius: 50%; z-index: 100;" onclick="toggleCart()">
+            <i class="bi bi-cart3"></i>
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="mobileCartBadge" style="display: none;">0</span>
+        </button>
+    </div>
+
+    <!-- Success Modal -->
+    <div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center py-5">
+                    <div class="mb-4">
+                        <i class="bi bi-check-circle text-success" style="font-size: 4rem;"></i>
+                    </div>
+                    <h4>Sale Completed!</h4>
+                    <p class="text-muted" id="successMessage">Invoice #SAL-001</p>
+                    <div class="d-flex gap-2 justify-content-center mt-4">
+                        <button class="btn btn-primary" onclick="printReceipt()">
+                            <i class="bi bi-printer"></i> Print
+                        </button>
+                        <button class="btn btn-success" onclick="newSale()">
+                            <i class="bi bi-plus-circle"></i> New Sale
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let cart = [];
+        let products = [];
+        let categories = [];
+        let currentCategory = 0;
+        let taxRate = 0;
+        let currencySymbol = '$';
+
+        async function initPOS() {
+            await Promise.all([
+                loadCategories(),
+                loadProducts(),
+                loadCustomers(),
+                loadSettings()
+            ]);
+            document.getElementById('barcodeInput').focus();
+        }
+
+        async function loadSettings() {
+            try {
+                const settings = await apiCall('/settings/currency');
+                taxRate = parseFloat(settings.tax_rate) || 0;
+                currencySymbol = settings.currency_symbol || '$';
+                document.getElementById('taxRateDisplay').textContent = taxRate;
+            } catch (e) {
+                console.log('Using default settings');
+            }
+        }
+
+        function formatCurrency(amount) {
+            return currencySymbol + parseFloat(amount).toFixed(2);
+        }
+
+        async function loadCategories() {
+            try {
+                categories = await apiCall('/categories');
+                const container = document.getElementById('categoriesList');
+                container.innerHTML = '<span class="category-chip active" onclick="filterCategory(0, this)">All</span>';
+                categories.forEach(cat => {
+                    const span = document.createElement('span');
+                    span.className = 'category-chip';
+                    span.textContent = cat.name;
+                    span.onclick = function() { filterCategory(cat.id, this); };
+                    container.appendChild(span);
+                });
+            } catch (e) {
+                console.log('No categories');
+            }
+        }
+
+        async function loadProducts() {
+            try {
+                products = await apiCall('/products?active=true');
+                renderProducts(products);
+            } catch (e) {
+                showToast('Failed to load products', 'danger');
+            }
+        }
+
+        async function loadCustomers() {
+            try {
+                const customers = await apiCall('/customers');
+                const select = document.getElementById('customerSelect');
+                select.innerHTML = '<option value="">Walk-in Customer</option>';
+                customers.forEach(c => {
+                    select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+                });
+            } catch (e) {
+                console.log('No customers');
+            }
+        }
+
+        function renderProducts(productsToRender) {
+            const grid = document.getElementById('productsGrid');
+            if (productsToRender.length === 0) {
+                grid.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+                        <p class="mt-3 text-muted">No products found</p>
+                    </div>`;
+                return;
+            }
+            
+            grid.innerHTML = productsToRender.map(p => {
+                const stock = p.quantity || 0;
+                const isOutOfStock = stock <= 0;
+                const isLowStock = stock > 0 && stock <= 10;
+                
+                return `
+                <div class="pos-product-card ${isOutOfStock ? 'out-of-stock' : ''}" 
+                     onclick="${isOutOfStock ? '' : `addToCart(${p.id})`}"
+                     data-product-id="${p.id}">
+                    <div class="pos-product-icon">
+                        <i class="bi bi-box-seam"></i>
+                    </div>
+                    <div class="pos-product-name">${p.name}</div>
+                    <div class="pos-product-sku">${p.sku || ''}</div>
+                    <div class="pos-product-price">${formatCurrency(p.unit_price)}</div>
+                    <div class="pos-product-stock">
+                        ${isOutOfStock ? '<span class="text-danger">Out of Stock</span>' : 
+                          isLowStock ? '<span class="text-warning">Low Stock: ' + stock + '</span>' : 
+                          'Stock: ' + stock}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function filterCategory(categoryId, element) {
+            currentCategory = categoryId;
+            document.querySelectorAll('.category-chip').forEach(chip => chip.classList.remove('active'));
+            element.classList.add('active');
+            
+            if (categoryId === 0) {
+                renderProducts(products);
+            } else {
+                const filtered = products.filter(p => p.category_id === categoryId);
+                renderProducts(filtered);
+            }
+        }
+
+        function showAllProducts() {
+            document.querySelectorAll('.category-chip').forEach(chip => chip.classList.remove('active'));
+            document.querySelector('.category-chip').classList.add('active');
+            renderProducts(products);
+        }
+
+        function showRecentProducts() {
+            const recent = products.slice(0, 12);
+            renderProducts(recent);
+        }
+
+        function showLowStockProducts() {
+            const lowStock = products.filter(p => (p.quantity || 0) <= 10 && (p.quantity || 0) > 0);
+            renderProducts(lowStock);
+        }
+
+        function searchProducts(query) {
+            query = query.toLowerCase();
+            if (!query) {
+                filterCategory(currentCategory, document.querySelector('.category-chip.active'));
+                return;
+            }
+            const filtered = products.filter(p => 
+                p.name.toLowerCase().includes(query) || 
+                p.sku.toLowerCase().includes(query) ||
+                (p.barcode && p.barcode.toLowerCase().includes(query))
+            );
+            renderProducts(filtered);
+        }
+
+        function handleBarcode(event) {
+            if (event.key === 'Enter') {
+                const barcode = event.target.value.trim();
+                if (barcode) {
+                    const product = products.find(p => p.barcode === barcode);
+                    if (product) {
+                        addToCart(product.id);
+                        event.target.value = '';
+                        showToast(`Added: ${product.name}`, 'success');
+                    } else {
+                        showToast('Product not found', 'warning');
+                    }
+                }
+            }
+        }
+
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            if (product.quantity <= 0) {
+                showToast('Product out of stock', 'warning');
+                return;
+            }
+
+            const existing = cart.find(item => item.product_id === productId);
+            if (existing) {
+                if (existing.quantity >= product.quantity) {
+                    showToast('Not enough stock', 'warning');
+                    return;
+                }
+                existing.quantity++;
+            } else {
+                cart.push({
+                    product_id: product.id,
+                    name: product.name,
+                    sku: product.sku,
+                    price: product.unit_price,
+                    quantity: 1,
+                    max_qty: product.quantity
+                });
+            }
+            renderCart();
+            updateTotals();
+            updateMobileBadge();
+        }
+
+        function removeFromCart(productId) {
+            cart = cart.filter(item => item.product_id !== productId);
+            renderCart();
+            updateTotals();
+            updateMobileBadge();
+        }
+
+        function updateQuantity(productId, qty) {
+            const item = cart.find(i => i.product_id === productId);
+            if (item) {
+                if (qty <= 0) {
+                    removeFromCart(productId);
+                } else if (qty > item.max_qty) {
+                    showToast('Not enough stock', 'warning');
+                } else {
+                    item.quantity = qty;
+                    renderCart();
+                    updateTotals();
+                }
+            }
+        }
+
+        function renderCart() {
+            const container = document.getElementById('cartItems');
+            const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+            document.getElementById('cartItemCount').textContent = `${itemCount} items`;
+            
+            if (cart.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state py-5">
+                        <i class="bi bi-cart-x"></i>
+                        <h5>Cart is empty</h5>
+                        <p>Add products to start a sale</p>
+                    </div>`;
+                return;
+            }
+            
+            container.innerHTML = cart.map(item => `
+                <div class="cart-item">
+                    <div class="cart-item-info">
+                        <div class="cart-item-name">${item.name}</div>
+                        <div class="cart-item-price">${formatCurrency(item.price)} × ${item.quantity}</div>
+                    </div>
+                    <div class="cart-item-qty">
+                        <button onclick="updateQuantity(${item.product_id}, ${item.quantity - 1})">-</button>
+                        <span>${item.quantity}</span>
+                        <button onclick="updateQuantity(${item.product_id}, ${item.quantity + 1})">+</button>
+                    </div>
+                    <div class="cart-item-total">${formatCurrency(item.price * item.quantity)}</div>
+                    <button class="cart-item-remove" onclick="removeFromCart(${item.product_id})">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function updateTotals() {
+            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const discountPercent = parseFloat(document.getElementById('discountPercent')?.value) || 0;
+            const discountAmount = subtotal * (discountPercent / 100);
+            const shipping = parseFloat(document.getElementById('shippingInput')?.value) || 0;
+            const tax = (subtotal - discountAmount) * (taxRate / 100);
+            const total = subtotal - discountAmount + tax + shipping;
+
+            document.getElementById('cartSubtotal').textContent = formatCurrency(subtotal);
+            document.getElementById('cartTax').textContent = formatCurrency(tax);
+            document.getElementById('cartDiscount').textContent = '-' + formatCurrency(discountAmount);
+            document.getElementById('cartTotal').textContent = formatCurrency(total);
+
+            const paid = parseFloat(document.getElementById('amountPaid').value) || 0;
+            const change = paid - total;
+            document.getElementById('changeAmount').textContent = formatCurrency(Math.max(0, change));
+            document.getElementById('changeAmount').classList.toggle('text-danger', change < 0);
+        }
+
+        function setAmount(amount) {
+            document.getElementById('amountPaid').value = amount;
+            updateTotals();
+        }
+
+        function updateCustomer() {}
+        document.getElementById('amountPaid').addEventListener('input', updateTotals);
+
+        function clearCart() {
+            if (cart.length > 0 && !confirm('Clear all items from cart?')) return;
+            cart = [];
+            renderCart();
+            updateTotals();
+            updateMobileBadge();
+            document.getElementById('barcodeInput').focus();
+        }
+
+        function toggleCart() {
+            document.getElementById('cartPanel').classList.toggle('show');
+        }
+
+        function updateMobileBadge() {
+            const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+            const badge = document.getElementById('mobileCartBadge');
+            badge.textContent = count;
+            badge.style.display = count > 0 ? 'block' : 'none';
+        }
+
+        async function processSale() {
+            if (cart.length === 0) {
+                showToast('Cart is empty', 'warning');
+                return;
+            }
+
+            const customerId = document.getElementById('customerSelect').value;
+            const paymentMethod = document.getElementById('paymentMethod').value;
+            const paidAmount = parseFloat(document.getElementById('amountPaid').value) || 0;
+            const shipping = parseFloat(document.getElementById('shippingInput')?.value) || 0;
+            const discountPercent = parseFloat(document.getElementById('discountPercent')?.value) || 0;
+
+            const items = cart.map(item => ({
+                product_id: item.product_id,
+                quantity: item.quantity,
+                unit_price: item.price,
+                tax_rate: taxRate
+            }));
+
+            const data = {
+                customer_id: customerId ? parseInt(customerId) : null,
+                items: items,
+                tax_rate: taxRate,
+                discount_amount: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) * (discountPercent / 100),
+                shipping_amount: shipping,
+                payment_method: paymentMethod,
+                paid_amount: paidAmount
+            };
+
+            try {
+                const sale = await apiCall('/sales', { method: 'POST', body: JSON.stringify(data) });
+                document.getElementById('successMessage').textContent = `Invoice: ${sale.invoice_number}`;
+                new bootstrap.Modal(document.getElementById('successModal')).show();
+                cart = [];
+                renderCart();
+                updateTotals();
+                updateMobileBadge();
+                await loadProducts();
+            } catch (err) {
+                showToast(err.message, 'danger');
+            }
+        }
+
+        async function saveQuotation() {
+            if (cart.length === 0) {
+                showToast('Cart is empty', 'warning');
+                return;
+            }
+
+            const customerId = document.getElementById('customerSelect').value;
+            const items = cart.map(item => ({
+                product_id: item.product_id,
+                quantity: item.quantity,
+                unit_price: item.price,
+                tax_rate: taxRate
+            }));
+
+            const data = {
+                customer_id: customerId ? parseInt(customerId) : null,
+                items: items,
+                tax_rate: taxRate
+            };
+
+            try {
+                const quote = await apiCall('/quotations', { method: 'POST', body: JSON.stringify(data) });
+                showToast('Quotation saved!', 'success');
+                cart = [];
+                renderCart();
+                updateTotals();
+            } catch (err) {
+                showToast(err.message, 'danger');
+            }
+        }
+
+        function printReceipt() {
+            showToast('Printing receipt...', 'info');
+        }
+
+        function newSale() {
+            bootstrap.Modal.getInstance(document.getElementById('successModal')).hide();
+            cart = [];
+            renderCart();
+            updateTotals();
+            updateMobileBadge();
+            document.getElementById('barcodeInput').focus();
+        }
+
+        // Initialize
+        initPOS();
+    </script>
+</body>
+</html>

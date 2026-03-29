@@ -152,7 +152,7 @@ func (h *InventoryHandler) GetAlerts(c *gin.Context) {
 	var products []models.Product
 	database.DB.Preload("Inventory").Where("is_active = ? AND reorder_point > 0").Find(&products)
 
-	var alerts []map[string]interface{}
+	alerts := []map[string]interface{}{}
 	for _, p := range products {
 		if p.Inventory != nil && p.Inventory.Quantity <= p.ReorderPoint {
 			alerts = append(alerts, map[string]interface{}{

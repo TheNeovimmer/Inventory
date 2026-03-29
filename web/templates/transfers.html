@@ -1,0 +1,394 @@
+{% extends "layout.html" %}
+
+{% block title %}Stock Transfers - Inventory Management{% endblock %}
+{% block page_title %}Stock Transfers{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <div class="header-content">
+            <h2><i class="bi bi-arrow-left-right"></i> Stock Transfers</h2>
+            <p class="text-muted">Manage inventory transfers between warehouses</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#transferModal">
+            <i class="bi bi-plus-lg"></i> New Transfer
+        </button>
+    </div>
+
+    <div class="filters-bar">
+        <div class="search-box">
+            <i class="bi bi-search"></i>
+            <input type="text" id="searchTransfers" placeholder="Search transfers..." class="form-control">
+        </div>
+        <select id="statusFilter" class="form-select">
+            <option value="">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="in_transit">In Transit</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+        </select>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="transfersTable">
+                    <thead>
+                        <tr>
+                            <th>Transfer #</th>
+                            <th>From Warehouse</th>
+                            <th>To Warehouse</th>
+                            <th>Items</th>
+                            <th>Status</th>
+                            <th>Created By</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transfersBody">
+                        <tr>
+                            <td colspan="8" class="text-center py-4">
+                                <div class="spinner-border spinner-border-sm"></div>
+                                <span class="ms-2">Loading transfers...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="transferModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">New Stock Transfer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="transferForm">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">From Warehouse *</label>
+                            <select name="from_warehouse_id" class="form-select" required id="fromWarehouse">
+                                <option value="">Select warehouse</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">To Warehouse *</label>
+                            <select name="to_warehouse_id" class="form-select" required id="toWarehouse">
+                                <option value="">Select warehouse</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea name="notes" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Transfer Items *</label>
+                        <div id="transferItems">
+                            <div class="transfer-item-row mb-2">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <select class="form-select product-select" name="items[0].product_id">
+                                            <option value="">Select product</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <input type="number" class="form-control" name="items[0].quantity" placeholder="Quantity" min="1">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="button" class="btn btn-outline-danger w-100" onclick="this.parentElement.parentElement.parentElement.remove()">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addTransferItem()">
+                            <i class="bi bi-plus"></i> Add Item
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createTransfer()">Create Transfer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="transferDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Transfer Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="transferDetailContent">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let itemIndex = 1;
+
+async function loadTransfers() {
+    try {
+        const status = document.getElementById('statusFilter').value;
+        const url = '/api/transfers' + (status ? '?status=' + status : '');
+        const data = await apiCall(url);
+        renderTransfers(data);
+    } catch (err) {
+        showToast('Failed to load transfers', 'danger');
+    }
+}
+
+function renderTransfers(transfers) {
+    const tbody = document.getElementById('transfersBody');
+    if (!transfers || transfers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">No transfers found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = transfers.map(t => `
+        <tr>
+            <td><strong>${t.transfer_number}</strong></td>
+            <td>${t.from_warehouse?.name || '-'}</td>
+            <td>${t.to_warehouse?.name || '-'}</td>
+            <td>${t.items?.length || 0} items</td>
+            <td><span class="badge bg-${getStatusColor(t.status)}">${t.status}</span></td>
+            <td>${t.creator_name || '-'}</td>
+            <td>${formatDate(t.created_at)}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="viewTransfer(${t.id})">
+                    <i class="bi bi-eye"></i>
+                </button>
+                ${t.status === 'pending' ? `<button class="btn btn-sm btn-outline-success" onclick="approveTransfer(${t.id})"><i class="bi bi-check-lg"></i></button>` : ''}
+                ${t.status === 'approved' ? `<button class="btn btn-sm btn-outline-info" onclick="startTransit(${t.id})"><i class="bi bi-truck"></i></button>` : ''}
+                ${t.status === 'in_transit' ? `<button class="btn btn-sm btn-outline-success" onclick="completeTransfer(${t.id})"><i class="bi bi-check-circle"></i></button>` : ''}
+            </td>
+        </tr>
+    `).join('');
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'pending': 'warning',
+        'approved': 'info',
+        'in_transit': 'primary',
+        'completed': 'success',
+        'cancelled': 'danger'
+    };
+    return colors[status] || 'secondary';
+}
+
+async function loadWarehouses() {
+    try {
+        const warehouses = await apiCall('/api/warehouses');
+        const options = warehouses.map(w => `<option value="${w.id}">${w.name} (${w.code})</option>`).join('');
+        document.getElementById('fromWarehouse').innerHTML = '<option value="">Select warehouse</option>' + options;
+        document.getElementById('toWarehouse').innerHTML = '<option value="">Select warehouse</option>' + options;
+    } catch (err) {
+        showToast('Failed to load warehouses', 'danger');
+    }
+}
+
+async function loadProducts() {
+    try {
+        const products = await apiCall('/api/products');
+        const options = products.map(p => `<option value="${p.id}">${p.name} (${p.sku})</option>`).join('');
+        document.querySelectorAll('.product-select').forEach(select => {
+            select.innerHTML = '<option value="">Select product</option>' + options;
+        });
+    } catch (err) {
+        showToast('Failed to load products', 'danger');
+    }
+}
+
+function addTransferItem() {
+    const container = document.getElementById('transferItems');
+    const row = document.createElement('div');
+    row.className = 'transfer-item-row mb-2';
+    row.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <select class="form-select product-select" name="items[${itemIndex}].product_id">
+                    <option value="">Select product</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <input type="number" class="form-control" name="items[${itemIndex}].quantity" placeholder="Quantity" min="1">
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-outline-danger w-100" onclick="this.parentElement.parentElement.parentElement.remove()">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    container.appendChild(row);
+    itemIndex++;
+    loadProducts();
+}
+
+async function createTransfer() {
+    const form = document.getElementById('transferForm');
+    const formData = new FormData(form);
+    const data = {
+        from_warehouse_id: parseInt(formData.get('from_warehouse_id')),
+        to_warehouse_id: parseInt(formData.get('to_warehouse_id')),
+        notes: formData.get('notes'),
+        items: []
+    };
+    
+    document.querySelectorAll('.transfer-item-row').forEach(row => {
+        const productId = row.querySelector('select').value;
+        const quantity = row.querySelector('input[type="number"]').value;
+        if (productId && quantity) {
+            data.items.push({
+                product_id: parseInt(productId),
+                quantity: parseInt(quantity)
+            });
+        }
+    });
+    
+    if (data.items.length === 0) {
+        showToast('Please add at least one item', 'warning');
+        return;
+    }
+    
+    if (data.from_warehouse_id === data.to_warehouse_id) {
+        showToast('Source and destination must be different', 'warning');
+        return;
+    }
+    
+    try {
+        await apiCall('/api/transfers', { method: 'POST', body: JSON.stringify(data) });
+        showToast('Transfer created successfully', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('transferModal')).hide();
+        loadTransfers();
+    } catch (err) {
+        showToast(err.message, 'danger');
+    }
+}
+
+async function viewTransfer(id) {
+    try {
+        const transfer = await apiCall('/api/transfers/' + id);
+        const modal = new bootstrap.Modal(document.getElementById('transferDetailModal'));
+        document.getElementById('transferDetailContent').innerHTML = `
+            <div class="transfer-detail">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Transfer #:</strong> ${transfer.transfer_number}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Status:</strong> <span class="badge bg-${getStatusColor(transfer.status)}">${transfer.status}</span>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>From:</strong> ${transfer.from_warehouse?.name || '-'}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>To:</strong> ${transfer.to_warehouse?.name || '-'}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <strong>Notes:</strong> ${transfer.notes || '-'}
+                </div>
+                <h6>Items</h6>
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>SKU</th>
+                            <th>Quantity</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${transfer.items.map(item => `
+                            <tr>
+                                <td>${item.product_name}</td>
+                                <td>${item.product_sku}</td>
+                                <td>${item.quantity}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+        modal.show();
+    } catch (err) {
+        showToast('Failed to load transfer details', 'danger');
+    }
+}
+
+async function approveTransfer(id) {
+    try {
+        await apiCall('/api/transfers/' + id + '/approve', { method: 'POST' });
+        showToast('Transfer approved', 'success');
+        loadTransfers();
+    } catch (err) {
+        showToast(err.message, 'danger');
+    }
+}
+
+async function startTransit(id) {
+    try {
+        await apiCall('/api/transfers/' + id + '/start-transit', { method: 'POST' });
+        showToast('Transfer in transit', 'success');
+        loadTransfers();
+    } catch (err) {
+        showToast(err.message, 'danger');
+    }
+}
+
+async function completeTransfer(id) {
+    try {
+        await apiCall('/api/transfers/' + id + '/complete', { method: 'POST' });
+        showToast('Transfer completed', 'success');
+        loadTransfers();
+    } catch (err) {
+        showToast(err.message, 'danger');
+    }
+}
+
+document.getElementById('searchTransfers').addEventListener('input', debounce(loadTransfers, 300));
+document.getElementById('statusFilter').addEventListener('change', loadTransfers);
+
+document.getElementById('transferModal').addEventListener('shown.bs.modal', () => {
+    loadWarehouses();
+    loadProducts();
+    document.getElementById('transferForm').reset();
+    document.getElementById('transferItems').innerHTML = `
+        <div class="transfer-item-row mb-2">
+            <div class="row">
+                <div class="col-md-6">
+                    <select class="form-select product-select" name="items[0].product_id">
+                        <option value="">Select product</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <input type="number" class="form-control" name="items[0].quantity" placeholder="Quantity" min="1">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-outline-danger w-100" onclick="this.parentElement.parentElement.parentElement.remove()">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    itemIndex = 1;
+});
+
+loadTransfers();
+</script>
+{% endblock %}

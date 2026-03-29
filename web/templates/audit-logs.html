@@ -1,0 +1,167 @@
+{% extends "layout.html" %}
+
+{% block title %}Audit Logs - Inventory Management{% endblock %}
+{% block page_title %}Audit Logs{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <div class="header-content">
+            <h2><i class="bi bi-journal-text"></i> Audit Logs</h2>
+            <p class="text-muted">Track all system activities and changes</p>
+        </div>
+        <button class="btn btn-outline-primary" onclick="exportLogs()">
+            <i class="bi bi-download"></i> Export
+        </button>
+    </div>
+
+    <div class="filters-bar mb-4">
+        <div class="row">
+            <div class="col-md-2">
+                <select id="entityTypeFilter" class="form-select" onchange="loadLogs()">
+                    <option value="">All Types</option>
+                    <option value="product">Product</option>
+                    <option value="inventory">Inventory</option>
+                    <option value="stock_transfer">Transfer</option>
+                    <option value="audit_cycle">Audit</option>
+                    <option value="user">User</option>
+                    <option value="purchase_order">Purchase Order</option>
+                    <option value="webhook">Webhook</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select id="actionFilter" class="form-select" onchange="loadLogs()">
+                    <option value="">All Actions</option>
+                    <option value="create">Create</option>
+                    <option value="update">Update</option>
+                    <option value="delete">Delete</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <input type="text" id="searchLogs" class="form-control" placeholder="Search logs..." oninput="debounceLoad()">
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="logsTable">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>User</th>
+                            <th>Entity Type</th>
+                            <th>Entity ID</th>
+                            <th>Action</th>
+                            <th>Description</th>
+                            <th>IP Address</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsBody">
+                        <tr>
+                            <td colspan="7" class="text-center py-4">
+                                <div class="spinner-border spinner-border-sm"></div>
+                                <span class="ms-2">Loading logs...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <div id="logsInfo"></div>
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="loadLogs()">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let debounceTimer = null;
+
+function debounceLoad() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(loadLogs, 300);
+}
+
+async function loadLogs() {
+    try {
+        const entityType = document.getElementById('entityTypeFilter').value;
+        const action = document.getElementById('actionFilter').value;
+        
+        let url = '/api/audit-logs?limit=100';
+        if (entityType) url += '&entity_type=' + entityType;
+        if (action) url += '&action=' + action;
+        
+        const data = await apiCall(url);
+        renderLogs(data);
+    } catch (err) {
+        showToast('Failed to load audit logs', 'danger');
+    }
+}
+
+function renderLogs(logs) {
+    const tbody = document.getElementById('logsBody');
+    if (!logs || logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No logs found</td></tr>';
+        return;
+    }
+    
+    document.getElementById('logsInfo').textContent = `Showing ${logs.length} log entries`;
+    
+    tbody.innerHTML = logs.map(l => `
+        <tr>
+            <td>${formatDate(l.created_at)}</td>
+            <td>${l.user_name || 'System'}</td>
+            <td><span class="badge bg-secondary">${l.entity_type}</span></td>
+            <td>${l.entity_id}</td>
+            <td><span class="badge bg-${getActionColor(l.action)}">${l.action}</span></td>
+            <td>${l.description || '-'}</td>
+            <td><small class="text-muted">${l.ip_address || '-'}</small></td>
+        </tr>
+    `).join('');
+}
+
+function getActionColor(action) {
+    const colors = {
+        'create': 'success',
+        'update': 'warning',
+        'delete': 'danger',
+        'login': 'info',
+        'logout': 'secondary',
+        'import': 'primary',
+        'export': 'info'
+    };
+    return colors[action] || 'secondary';
+}
+
+async function exportLogs() {
+    try {
+        const logs = await apiCall('/api/audit-logs?limit=1000');
+        
+        let csv = 'Timestamp,User,Entity Type,Entity ID,Action,Description,IP Address\n';
+        logs.forEach(log => {
+            csv += `${log.created_at},${log.user_name || 'System'},${log.entity_type},${log.entity_id},${log.action},"${log.description || ''}",${log.ip_address || ''}\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'audit_logs.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        showToast('Audit logs exported', 'success');
+    } catch (err) {
+        showToast('Failed to export logs', 'danger');
+    }
+}
+
+loadLogs();
+</script>
+{% endblock %}

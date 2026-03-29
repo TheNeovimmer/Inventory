@@ -1,0 +1,326 @@
+{% extends "layout.html" %}
+
+{% block title %}Sales - Inventory Management{% endblock %}
+{% block page_title %}Sales{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <div class="header-content">
+            <h2><i class="bi bi-receipt"></i> Sales</h2>
+            <p class="text-muted">View and manage sales transactions</p>
+        </div>
+        <a href="/pos" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> New Sale
+        </a>
+    </div>
+
+    <div class="filters-bar">
+        <div class="search-box">
+            <i class="bi bi-search"></i>
+            <input type="text" id="searchSales" placeholder="Search by invoice number..." class="form-control">
+        </div>
+        <select id="statusFilter" class="form-select">
+            <option value="">All Status</option>
+            <option value="completed">Completed</option>
+            <option value="pending">Pending</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="returned">Returned</option>
+        </select>
+        <input type="date" id="startDate" class="form-control">
+        <input type="date" id="endDate" class="form-control">
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-success">
+                    <i class="bi bi-currency-dollar"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalSales">$0.00</div>
+                    <div class="stat-label">Total Sales</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-primary">
+                    <i class="bi bi-cart"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalOrders">0</div>
+                    <div class="stat-label">Total Orders</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-warning">
+                    <i class="bi bi-clock"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="pendingPayments">$0.00</div>
+                    <div class="stat-label">Pending Payments</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-info">
+                    <i class="bi bi-graph-up"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="avgOrderValue">$0.00</div>
+                    <div class="stat-label">Avg Order Value</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="salesTable">
+                    <thead>
+                        <tr>
+                            <th>Invoice #</th>
+                            <th>Customer</th>
+                            <th>Total</th>
+                            <th>Paid</th>
+                            <th>Due</th>
+                            <th>Status</th>
+                            <th>Payment</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="salesBody">
+                        <tr>
+                            <td colspan="9" class="text-center py-4">
+                                <div class="spinner-border spinner-border-sm"></div>
+                                <span class="ms-2">Loading sales...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="saleDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Sale Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="saleDetailContent"></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="paymentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Payment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="paymentSaleId">
+                <div class="mb-3">
+                    <label class="form-label">Amount</label>
+                    <input type="number" id="paymentAmount" class="form-control" step="0.01">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Payment Method</label>
+                    <select id="paymentMethod" class="form-select">
+                        <option value="cash">Cash</option>
+                        <option value="card">Card</option>
+                        <option value="transfer">Bank Transfer</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Reference</label>
+                    <input type="text" id="paymentReference" class="form-control">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="addPayment()">Add Payment</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentSaleId = null;
+
+async function loadSales() {
+    try {
+        const status = document.getElementById('statusFilter').value;
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        
+        let url = '/api/sales';
+        const params = [];
+        if (status) params.push('status=' + status);
+        if (startDate) params.push('start_date=' + startDate);
+        if (endDate) params.push('end_date=' + endDate);
+        if (params.length) url += '?' + params.join('&');
+        
+        const data = await apiCall(url);
+        renderSales(data);
+        updateStats(data);
+    } catch (err) {
+        showToast('Failed to load sales', 'danger');
+    }
+}
+
+function updateStats(sales) {
+    const total = sales.reduce((sum, s) => sum + s.total, 0);
+    const pending = sales.filter(s => s.payment_status !== 'paid').reduce((sum, s) => sum + s.due_amount, 0);
+    
+    document.getElementById('totalSales').textContent = formatCurrency(total);
+    document.getElementById('totalOrders').textContent = sales.length;
+    document.getElementById('pendingPayments').textContent = formatCurrency(pending);
+    document.getElementById('avgOrderValue').textContent = sales.length ? formatCurrency(total / sales.length) : '$0.00';
+}
+
+function renderSales(sales) {
+    const tbody = document.getElementById('salesBody');
+    if (!sales || sales.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted">No sales found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = sales.map(s => `
+        <tr>
+            <td><strong>${s.invoice_number}</strong></td>
+            <td>${s.customer_name || 'Walk-in'}</td>
+            <td>${formatCurrency(s.total)}</td>
+            <td>${formatCurrency(s.paid_amount)}</td>
+            <td class="${s.due_amount > 0 ? 'text-warning' : ''}">${formatCurrency(s.due_amount)}</td>
+            <td><span class="badge bg-${getStatusColor(s.status)}">${s.status}</span></td>
+            <td><span class="badge bg-${getPaymentColor(s.payment_status)}">${s.payment_status}</span></td>
+            <td>${s.sale_date}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="viewSale(${s.id})">
+                    <i class="bi bi-eye"></i>
+                </button>
+                ${s.due_amount > 0 ? `<button class="btn btn-sm btn-outline-success" onclick="openPaymentModal(${s.id}, ${s.due_amount})"><i class="bi bi-cash"></i></button>` : ''}
+                ${s.status === 'completed' ? `<button class="btn btn-sm btn-outline-danger" onclick="cancelSale(${s.id})"><i class="bi bi-x-circle"></i></button>` : ''}
+            </td>
+        </tr>
+    `).join('');
+}
+
+function getStatusColor(status) {
+    const colors = { 'completed': 'success', 'pending': 'warning', 'cancelled': 'danger', 'returned': 'info' };
+    return colors[status] || 'secondary';
+}
+
+function getPaymentColor(status) {
+    const colors = { 'paid': 'success', 'partial': 'warning', 'due': 'danger' };
+    return colors[status] || 'secondary';
+}
+
+async function viewSale(id) {
+    try {
+        const sale = await apiCall('/api/sales/' + id);
+        const modal = new bootstrap.Modal(document.getElementById('saleDetailModal'));
+        
+        document.getElementById('saleDetailContent').innerHTML = `
+            <div class="invoice-box">
+                <div class="d-flex justify-content-between mb-4">
+                    <div>
+                        <h4>${sale.invoice_number}</h4>
+                        <p class="text-muted mb-0">${sale.customer_name || 'Walk-in Customer'}</p>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-${getStatusColor(sale.status)} fs-6">${sale.status}</span>
+                        <p class="text-muted mb-0">${sale.sale_date}</p>
+                    </div>
+                </div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Qty</th>
+                            <th>Price</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${sale.items.map(item => `
+                            <tr>
+                                <td>${item.product_name}</td>
+                                <td>${item.quantity}</td>
+                                <td>${formatCurrency(item.unit_price)}</td>
+                                <td>${formatCurrency(item.total)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                <div class="text-end">
+                    <p>Subtotal: ${formatCurrency(sale.subtotal)}</p>
+                    <p>Tax: ${formatCurrency(sale.tax_amount)}</p>
+                    <p>Discount: -${formatCurrency(sale.discount_amount)}</p>
+                    <p>Shipping: ${formatCurrency(sale.shipping_amount)}</p>
+                    <h4>Total: ${formatCurrency(sale.total)}</h4>
+                    <p>Paid: ${formatCurrency(sale.paid_amount)}</p>
+                    <p class="${sale.due_amount > 0 ? 'text-warning' : 'text-success'}">Due: ${formatCurrency(sale.due_amount)}</p>
+                </div>
+            </div>
+        `;
+        modal.show();
+    } catch (err) {
+        showToast('Failed to load sale', 'danger');
+    }
+}
+
+function openPaymentModal(saleId, dueAmount) {
+    currentSaleId = saleId;
+    document.getElementById('paymentAmount').value = dueAmount.toFixed(2);
+    new bootstrap.Modal(document.getElementById('paymentModal')).show();
+}
+
+async function addPayment() {
+    const data = {
+        amount: parseFloat(document.getElementById('paymentAmount').value),
+        payment_method: document.getElementById('paymentMethod').value,
+        reference: document.getElementById('paymentReference').value
+    };
+    
+    try {
+        await apiCall('/api/sales/' + currentSaleId + '/payment', { method: 'POST', body: JSON.stringify(data) });
+        showToast('Payment added', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('paymentModal')).hide();
+        loadSales();
+    } catch (err) {
+        showToast(err.message, 'danger');
+    }
+}
+
+async function cancelSale(id) {
+    if (!confirm('Are you sure you want to cancel this sale? This will restore inventory.')) return;
+    
+    try {
+        await apiCall('/api/sales/' + id + '/cancel', { method: 'POST' });
+        showToast('Sale cancelled', 'success');
+        loadSales();
+    } catch (err) {
+        showToast(err.message, 'danger');
+    }
+}
+
+document.getElementById('statusFilter').addEventListener('change', loadSales);
+document.getElementById('startDate').addEventListener('change', loadSales);
+document.getElementById('endDate').addEventListener('change', loadSales);
+document.getElementById('searchSales').addEventListener('input', debounce(loadSales, 300));
+
+loadSales();
+</script>
+{% endblock %}

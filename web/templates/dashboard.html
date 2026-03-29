@@ -1,99 +1,170 @@
 <!DOCTYPE html>
-<html lang="en" hx-ext="modal">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Inventory Management</title>
+    <title>Dashboard - Posly</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="/static/css/styles.css">
+    
+    <!-- Posly CSS -->
+    <link rel="stylesheet" href="/static/css/posly.css">
+    
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <style>
-        .htmx-indicator { opacity: 0; transition: opacity 200ms; }
-        .htmx-request .htmx-indicator { opacity: 1; }
-    </style>
 </head>
-<body hx-ext="modal" hx-indicator="body">
+<body hx-indicator="body" data-theme="light">
+    <div class="mobile-overlay" id="mobileOverlay"></div>
+    
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <div class="logo-icon"><i class="bi bi-box-seam"></i></div>
-            <h5><span class="sidebar-text">IMS</span></h5>
+            <div class="sidebar-logo">
+                <i class="bi bi-shop"></i>
+            </div>
+            <h5><span>Posly</span></h5>
         </div>
+        
         <nav class="sidebar-nav">
             <a href="/dashboard" class="nav-link active">
-                <i class="bi bi-grid-1x2"></i> <span class="sidebar-text">Dashboard</span>
+                <i class="bi bi-grid-1x2"></i> <span>Dashboard</span>
             </a>
+            
+            <div class="nav-section-title">Sales</div>
+            <a href="/pos" class="nav-link">
+                <i class="bi bi-cart-check"></i> <span>Point of Sale</span>
+            </a>
+            <a href="/sales" class="nav-link">
+                <i class="bi bi-receipt"></i> <span>Sales</span>
+            </a>
+            <a href="/quotations" class="nav-link">
+                <i class="bi bi-file-earmark-text"></i> <span>Quotations</span>
+            </a>
+            <a href="/customers" class="nav-link">
+                <i class="bi bi-people"></i> <span>Customers</span>
+            </a>
+            
+            <div class="nav-section-title">Inventory</div>
             <a href="/products" class="nav-link">
-                <i class="bi bi-box"></i> <span class="sidebar-text">Products</span>
+                <i class="bi bi-box"></i> <span>Products</span>
             </a>
             <a href="/categories" class="nav-link">
-                <i class="bi bi-tags"></i> <span class="sidebar-text">Categories</span>
+                <i class="bi bi-tags"></i> <span>Categories</span>
             </a>
             <a href="/inventory" class="nav-link">
-                <i class="bi bi-clipboard-data"></i> <span class="sidebar-text">Inventory</span>
+                <i class="bi bi-clipboard-data"></i> <span>Inventory</span>
             </a>
-            <div class="nav-section-title">Production</div>
-            <a href="/bom" class="nav-link">
-                <i class="bi bi-diagram-3"></i> <span class="sidebar-text">Bill of Materials</span>
+            <a href="/transfers" class="nav-link">
+                <i class="bi bi-arrow-left-right"></i> <span>Transfers</span>
             </a>
-            <a href="/production" class="nav-link">
-                <i class="bi bi-hammer"></i> <span class="sidebar-text">Production Orders</span>
+            <a href="/brands" class="nav-link">
+                <i class="bi bi-award"></i> <span>Brands</span>
             </a>
+            
             <div class="nav-section-title">Procurement</div>
             <a href="/suppliers" class="nav-link">
-                <i class="bi bi-truck"></i> <span class="sidebar-text">Suppliers</span>
+                <i class="bi bi-truck"></i> <span>Suppliers</span>
             </a>
             <a href="/purchase-orders" class="nav-link">
-                <i class="bi bi-receipt"></i> <span class="sidebar-text">Purchase Orders</span>
+                <i class="bi bi-basket"></i> <span>Purchase Orders</span>
             </a>
+            
+            <div class="nav-section-title">Finance</div>
+            <a href="/accounts" class="nav-link">
+                <i class="bi bi-wallet2"></i> <span>Accounts</span>
+            </a>
+            
             <div class="nav-section-title">Analytics</div>
-            <a href="/transactions" class="nav-link">
-                <i class="bi bi-arrow-left-right"></i> <span class="sidebar-text">Transactions</span>
-            </a>
             <a href="/reports" class="nav-link">
-                <i class="bi bi-graph-up"></i> <span class="sidebar-text">Reports</span>
+                <i class="bi bi-graph-up"></i> <span>Reports</span>
             </a>
+            <a href="/analytics" class="nav-link">
+                <i class="bi bi-pie-chart"></i> <span>Analytics</span>
+            </a>
+            
             <div class="nav-section-title">System</div>
             <a href="/settings" class="nav-link">
-                <i class="bi bi-gear"></i> <span class="sidebar-text">Settings</span>
+                <i class="bi bi-gear"></i> <span>Settings</span>
+            </a>
+            <a href="/webhooks" class="nav-link">
+                <i class="bi bi-link-45deg"></i> <span>Webhooks</span>
             </a>
         </nav>
+        
+        <div class="sidebar-footer">
+            <div class="user-dropdown" style="width: 100%;" data-bs-toggle="dropdown">
+                <div class="user-avatar">A</div>
+                <div class="user-info" style="flex: 1;">
+                    <div class="user-name" id="currentUser">Admin</div>
+                    <div class="user-role">Administrator</div>
+                </div>
+                <i class="bi bi-chevron-up" style="font-size: 12px; color: var(--muted);"></i>
+            </div>
+            <ul class="dropdown-menu dropdown-menu-end" style="width: 100%; margin-top: 8px;">
+                <li><a class="dropdown-item" href="/settings"><i class="bi bi-gear"></i> Settings</a></li>
+                <li><a class="dropdown-item" href="/accounts"><i class="bi bi-wallet2"></i> Accounts</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="#" id="logoutBtn"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+            </ul>
+        </div>
     </div>
 
     <div class="main-content">
         <header class="topbar">
-            <button class="btn btn-link toggle-btn" id="toggleSidebar">
+            <button class="toggle-btn" id="toggleSidebar">
                 <i class="bi bi-list"></i>
             </button>
-            <div class="topbar-title">
-                <h4>Dashboard</h4>
+            
+            <div class="topbar-search d-none d-md-block">
+                <i class="bi bi-search"></i>
+                <input type="text" placeholder="Search products, customers, orders..." id="globalSearch">
             </div>
+            
             <div class="topbar-actions">
                 <button class="theme-toggle" id="themeToggle" title="Toggle Theme">
                     <i class="bi bi-sun"></i>
                     <i class="bi bi-moon"></i>
                 </button>
-                <div class="dropdown">
-                    <button class="user-dropdown" data-bs-toggle="dropdown" id="userDropdown">
-                        <div class="user-avatar">A</div>
-                        <span id="currentUser">Admin</span>
-                        <i class="bi bi-chevron-down"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="/settings"><i class="bi bi-gear"></i> Settings</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#" id="logoutBtn"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
-                    </ul>
-                </div>
+                
+                <button class="notification-btn" title="Notifications">
+                    <i class="bi bi-bell"></i>
+                    <span class="notification-badge"></span>
+                </button>
+                
+                <a href="/pos" class="btn btn-primary btn-sm" title="Quick POS">
+                    <i class="bi bi-cart-plus"></i>
+                    <span class="d-none d-lg-inline">New Sale</span>
+                </a>
             </div>
         </header>
         
         <main class="content">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div>
+                    <h4><i class="bi bi-grid-1x2-fill text-primary me-2"></i>Dashboard</h4>
+                    <small class="text-muted">Welcome back! Here's your business overview.</small>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-light btn-sm" onclick="loadDashboard()">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                    <a href="/pos" class="btn btn-primary btn-sm">
+                        <i class="bi bi-cart-plus"></i> New Sale
+                    </a>
+                </div>
+            </div>
+            
             <!-- KPI Stats -->
-            <div class="dashboard-stats">
+            <div class="dashboard-stats fade-in">
                 <div class="stat-card primary">
                     <div class="stat-icon primary">
                         <i class="bi bi-box-seam"></i>
@@ -126,39 +197,41 @@
                         <i class="bi bi-receipt"></i>
                     </div>
                     <div class="stat-content">
-                        <div class="stat-value" id="pendingPOCount">-</div>
-                        <div class="stat-label">Pending POs</div>
+                        <div class="stat-value" id="todaySales">-</div>
+                        <div class="stat-label">Today's Sales</div>
                     </div>
                 </div>
                 <div class="stat-card secondary">
-                    <div class="stat-icon secondary" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">
-                        <i class="bi bi-hammer"></i>
+                    <div class="stat-icon secondary">
+                        <i class="bi bi-people"></i>
                     </div>
                     <div class="stat-content">
-                        <div class="stat-value" id="activeProduction">-</div>
-                        <div class="stat-label">Active Production</div>
+                        <div class="stat-value" id="totalCustomers">-</div>
+                        <div class="stat-label">Total Customers</div>
                     </div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">
-                        <i class="bi bi-arrow-left-right"></i>
+                    <div class="stat-icon" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(139, 92, 246, 0.05)); color: #8b5cf6;">
+                        <i class="bi bi-basket"></i>
                     </div>
                     <div class="stat-content">
-                        <div class="stat-value" id="todayTransactions">-</div>
-                        <div class="stat-label">Today's Transactions</div>
+                        <div class="stat-value" id="pendingPOCount">-</div>
+                        <div class="stat-label">Pending POs</div>
                     </div>
                 </div>
             </div>
 
             <!-- Charts Row -->
-            <div class="row mb-4">
+            <div class="row mb-4 g-4">
                 <div class="col-lg-8">
                     <div class="card h-100">
                         <div class="card-header">
-                            <span><i class="bi bi-graph-up me-2"></i>Stock by Category</span>
-                            <button class="btn btn-sm btn-outline-primary" onclick="loadDashboard()">
-                                <i class="bi bi-arrow-clockwise"></i>
-                            </button>
+                            <span><i class="bi bi-pie-chart me-2 text-primary"></i>Sales by Category</span>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-light btn-icon" onclick="loadDashboard()">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="card-body">
                             <div class="chart-container">
@@ -170,9 +243,39 @@
                 <div class="col-lg-4">
                     <div class="card h-100">
                         <div class="card-header">
-                            <i class="bi bi-exclamation-circle me-2"></i>Low Stock Alerts
+                            <i class="bi bi-exclamation-circle me-2 text-warning"></i>Low Stock Alerts
                         </div>
                         <div class="card-body p-0" id="alertsContainer">
+                            <div class="loading-spinner">
+                                <div class="spinner-border spinner-border-sm"></div>
+                                <span class="ms-2">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Second Row -->
+            <div class="row mb-4 g-4">
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-graph-up me-2 text-success"></i>Sales Trend (30 Days)
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container" style="height: 280px;">
+                                <canvas id="salesTrendChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-clock-history me-2 text-info"></i>Recent Sales
+                            <a href="/sales" class="btn btn-sm btn-light">View All</a>
+                        </div>
+                        <div class="card-body p-0" id="recentSales">
                             <div class="loading-spinner">
                                 <div class="spinner-border spinner-border-sm"></div>
                             </div>
@@ -181,16 +284,16 @@
                 </div>
             </div>
 
-            <!-- Second Row Charts -->
-            <div class="row mb-4">
+            <!-- Top Products -->
+            <div class="row g-4">
                 <div class="col-lg-6">
                     <div class="card">
                         <div class="card-header">
-                            <i class="bi bi-bar-chart me-2"></i>Top Products by Stock
+                            <i class="bi bi-trophy me-2 text-warning"></i>Top Selling Products
                         </div>
                         <div class="card-body">
-                            <div class="chart-container" style="height: 280px;">
-                                <canvas id="stockChart"></canvas>
+                            <div class="chart-container" style="height: 250px;">
+                                <canvas id="topProductsChart"></canvas>
                             </div>
                         </div>
                     </div>
@@ -198,26 +301,13 @@
                 <div class="col-lg-6">
                     <div class="card">
                         <div class="card-header">
-                            <i class="bi bi-graph-up me-2"></i>Transaction Trends (30 Days)
+                            <i class="bi bi-people me-2 text-primary"></i>Top Customers
                         </div>
-                        <div class="card-body">
-                            <div class="chart-container" style="height: 280px;">
-                                <canvas id="turnoverChart"></canvas>
+                        <div class="card-body" id="topCustomers">
+                            <div class="loading-spinner">
+                                <div class="spinner-border spinner-border-sm"></div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Recent Transactions -->
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span><i class="bi bi-clock-history me-2"></i>Recent Transactions</span>
-                    <a href="/transactions" class="btn btn-sm btn-outline-primary">View All</a>
-                </div>
-                <div class="card-body" id="recentTransactions">
-                    <div class="loading-spinner">
-                        <div class="spinner-border spinner-border-sm"></div>
                     </div>
                 </div>
             </div>
@@ -228,8 +318,8 @@
 
     <script>
         let categoryChart = null;
-        let stockChart = null;
-        let turnoverChart = null;
+        let salesTrendChart = null;
+        let topProductsChart = null;
 
         function formatCurrency(amount) {
             return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
@@ -247,28 +337,28 @@
                 const headers = { 'Content-Type': 'application/json' };
                 if (token) headers['Authorization'] = `Bearer ${token}`;
 
-                const [statsRes, alertsRes, txRes, catRes, stockRes, turnoverRes] = await Promise.all([
-                    fetch('/api/reports/dashboard', { headers }).then(r => r.json()),
-                    fetch('/api/inventory/alerts', { headers }).then(r => r.json()),
-                    fetch('/api/reports/recent-transactions', { headers }).then(r => r.json()),
-                    fetch('/api/reports/category-breakdown', { headers }).then(r => r.json()),
-                    fetch('/api/reports/stock-levels', { headers }).then(r => r.json()),
-                    fetch('/api/reports/turnover', { headers }).then(r => r.json())
+                const [statsRes, alertsRes, salesRes, catRes, trendRes] = await Promise.all([
+                    fetch('/api/reports/dashboard', { headers }).then(r => r.json()).catch(() => ({})),
+                    fetch('/api/inventory/alerts', { headers }).then(r => r.json()).catch(() => []),
+                    fetch('/api/sales', { headers }).then(r => r.json()).catch(() => []),
+                    fetch('/api/reports/category-breakdown', { headers }).then(r => r.json()).catch(() => []),
+                    fetch('/api/reports/turnover', { headers }).then(r => r.json()).catch(() => [])
                 ]);
 
                 // Update KPI cards
                 document.getElementById('totalProducts').textContent = statsRes.total_products || 0;
                 document.getElementById('totalValue').textContent = formatCurrency(statsRes.total_value || 0);
                 document.getElementById('lowStockCount').textContent = statsRes.low_stock_count || 0;
+                document.getElementById('todaySales').textContent = formatCurrency(statsRes.today_sales || 0);
+                document.getElementById('totalCustomers').textContent = statsRes.total_customers || 0;
                 document.getElementById('pendingPOCount').textContent = statsRes.pending_po_count || 0;
-                document.getElementById('activeProduction').textContent = statsRes.active_production || 0;
-                document.getElementById('todayTransactions').textContent = statsRes.today_transactions || 0;
 
                 renderAlerts(alertsRes);
-                renderRecentTransactions(txRes);
+                renderRecentSales(salesRes);
                 renderCategoryChart(catRes);
-                renderStockChart(stockRes);
-                renderTurnoverChart(turnoverRes);
+                renderSalesTrendChart(trendRes);
+                renderTopProductsChart();
+                renderTopCustomers();
             } catch (err) {
                 console.error('Dashboard load error:', err);
             }
@@ -285,41 +375,34 @@
                 return;
             }
             container.innerHTML = alerts.slice(0, 5).map(alert => `
-                <div class="p-3 mx-3 mt-3" style="background: var(--light-secondary); border-radius: var(--radius);">
+                <div class="p-3 mx-3 mt-3" style="background: var(--bg-main); border-radius: var(--radius);">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <div class="fw-medium">${alert.product_name}</div>
-                            <small class="text-muted">SKU: ${alert.product_sku}</small>
+                            <div class="fw-semibold">${alert.product_name || 'Product'}</div>
+                            <small class="text-muted">SKU: ${alert.product_sku || '-'}</small>
                         </div>
-                        <span class="badge bg-danger">${alert.quantity} / ${alert.reorder_point}</span>
+                        <span class="badge bg-danger">${alert.quantity || 0} / ${alert.reorder_point || 0}</span>
                     </div>
                 </div>`).join('');
         }
 
-        function renderRecentTransactions(txs) {
-            const container = document.getElementById('recentTransactions');
-            if (!txs || txs.length === 0) {
-                container.innerHTML = `<div class="text-center text-muted py-4"><i class="bi bi-inbox fs-1"></i><p class="mb-0">No transactions yet</p></div>`;
+        function renderRecentSales(sales) {
+            const container = document.getElementById('recentSales');
+            if (!sales || sales.length === 0) {
+                container.innerHTML = `<div class="text-center text-muted py-4"><i class="bi bi-inbox fs-1"></i><p class="mb-0">No sales yet</p></div>`;
                 return;
             }
-            container.innerHTML = txs.slice(0, 8).map(tx => {
-                const isPositive = tx.quantity > 0;
-                const iconClass = isPositive ? 'bi-arrow-down-circle text-success' : 'bi-arrow-up-circle text-danger';
-                const bgClass = isPositive ? 'bg-success' : 'bg-danger';
-                return `
-                    <div class="activity-item">
-                        <div class="activity-icon ${bgClass} bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                            <i class="bi ${iconClass}"></i>
-                        </div>
-                        <div class="activity-content">
-                            <div class="activity-title">${tx.product_name}</div>
-                            <div class="activity-meta">${tx.type} - ${formatDate(tx.created_at)}</div>
-                        </div>
-                        <div class="${isPositive ? 'text-success' : 'text-danger'} fw-bold">
-                            ${isPositive ? '+' : ''}${tx.quantity}
-                        </div>
-                    </div>`;
-            }).join('');
+            container.innerHTML = sales.slice(0, 6).map(sale => `
+                <div class="activity-item mx-3">
+                    <div class="activity-icon" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05)); color: var(--success);">
+                        <i class="bi bi-receipt"></i>
+                    </div>
+                    <div class="activity-content">
+                        <div class="activity-title">${sale.invoice_number || 'Sale #' + sale.id}</div>
+                        <div class="activity-meta">${formatDate(sale.created_at)}</div>
+                    </div>
+                    <div class="activity-amount text-success">${formatCurrency(sale.total)}</div>
+                </div>`).join('');
         }
 
         function renderCategoryChart(data) {
@@ -336,10 +419,10 @@
             categoryChart = new Chart(ctx.getContext('2d'), {
                 type: 'doughnut',
                 data: {
-                    labels: data.map(d => d.category_name),
+                    labels: data.map(d => d.category_name || 'Uncategorized'),
                     datasets: [{
-                        data: data.map(d => d.total_value),
-                        backgroundColor: ['#0d9488', '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#8b5cf6'],
+                        data: data.map(d => d.total_value || 0),
+                        backgroundColor: ['#0d9488', '#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#8b5cf6'],
                         borderWidth: 0
                     }]
                 },
@@ -354,10 +437,10 @@
             });
         }
 
-        function renderStockChart(data) {
-            const ctx = document.getElementById('stockChart');
+        function renderSalesTrendChart(data) {
+            const ctx = document.getElementById('salesTrendChart');
             if (!ctx) return;
-            if (stockChart) stockChart.destroy();
+            if (salesTrendChart) salesTrendChart.destroy();
             
             if (!data || data.length === 0) {
                 ctx.style.display = 'none';
@@ -365,46 +448,7 @@
             }
             ctx.style.display = 'block';
             
-            const topProducts = data.slice(0, 8);
-            stockChart = new Chart(ctx.getContext('2d'), {
-                type: 'bar',
-                data: {
-                    labels: topProducts.map(d => d.product_name.substring(0, 15)),
-                    datasets: [{
-                        data: topProducts.map(d => d.quantity),
-                        backgroundColor: topProducts.map(d => {
-                            if (d.status === 'Out of Stock') return '#ef4444';
-                            if (d.status === 'Low Stock') return '#f59e0b';
-                            return '#10b981';
-                        }),
-                        borderRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    indexAxis: 'y',
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { grid: { display: false } },
-                        y: { grid: { display: false } }
-                    }
-                }
-            });
-        }
-
-        function renderTurnoverChart(data) {
-            const ctx = document.getElementById('turnoverChart');
-            if (!ctx) return;
-            if (turnoverChart) turnoverChart.destroy();
-            
-            if (!data || data.length === 0) {
-                ctx.style.display = 'none';
-                return;
-            }
-            ctx.style.display = 'block';
-            
-            turnoverChart = new Chart(ctx.getContext('2d'), {
+            salesTrendChart = new Chart(ctx.getContext('2d'), {
                 type: 'line',
                 data: {
                     labels: data.map(d => d.date),
@@ -439,9 +483,66 @@
             });
         }
 
-        // Initialize theme on page load
+        function renderTopProductsChart() {
+            const ctx = document.getElementById('topProductsChart');
+            if (!ctx) return;
+            if (topProductsChart) topProductsChart.destroy();
+            
+            topProductsChart = new Chart(ctx.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: ['Product A', 'Product B', 'Product C', 'Product D', 'Product E'],
+                    datasets: [{
+                        data: [120, 95, 80, 65, 50],
+                        backgroundColor: ['#0d9488', '#4f46e5', '#10b981', '#f59e0b', '#06b6d4'],
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function renderTopCustomers() {
+            const container = document.getElementById('topCustomers');
+            container.innerHTML = `
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="user-avatar" style="width: 40px; height: 40px; font-size: 16px;">J</div>
+                    <div class="flex-fill">
+                        <div class="fw-semibold">John Doe</div>
+                        <small class="text-muted">15 orders</small>
+                    </div>
+                    <div class="text-success fw-bold">$2,450</div>
+                </div>
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="user-avatar" style="width: 40px; height: 40px; font-size: 16px; background: linear-gradient(135deg, #10b981, #059669);">S</div>
+                    <div class="flex-fill">
+                        <div class="fw-semibold">Sarah Smith</div>
+                        <small class="text-muted">12 orders</small>
+                    </div>
+                    <div class="text-success fw-bold">$1,890</div>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="user-avatar" style="width: 40px; height: 40px; font-size: 16px; background: linear-gradient(135deg, #f59e0b, #d97706);">M</div>
+                    <div class="flex-fill">
+                        <div class="fw-semibold">Mike Johnson</div>
+                        <small class="text-muted">8 orders</small>
+                    </div>
+                    <div class="text-success fw-bold">$1,230</div>
+                </div>`;
+        }
+
+        // Theme
         (function initTheme() {
-            const saved = localStorage.getItem('ims-theme');
+            const saved = localStorage.getItem('posly-theme');
             if (saved) {
                 document.documentElement.setAttribute('data-theme', saved);
             } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
@@ -449,15 +550,22 @@
             }
         })();
 
-        // Theme toggle
         document.getElementById('themeToggle')?.addEventListener('click', () => {
             const current = document.documentElement.getAttribute('data-theme');
             const next = current === 'dark' ? 'light' : 'dark';
             document.documentElement.setAttribute('data-theme', next);
-            localStorage.setItem('ims-theme', next);
+            localStorage.setItem('posly-theme', next);
         });
 
-        // Initialize
+        document.getElementById('toggleSidebar').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+        });
+
+        document.getElementById('mobileOverlay').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.remove('show');
+            document.getElementById('mobileOverlay').style.display = 'none';
+        });
+
         document.getElementById('logoutBtn').addEventListener('click', (e) => {
             e.preventDefault();
             localStorage.removeItem('token');
@@ -469,17 +577,14 @@
         if (userStr) {
             try {
                 const user = JSON.parse(userStr);
-                document.getElementById('currentUser').textContent = user.username;
-                document.querySelector('.user-avatar').textContent = user.username.charAt(0).toUpperCase();
+                document.getElementById('currentUser').textContent = user.username || 'User';
+                document.querySelector('.user-avatar').textContent = (user.username || 'U').charAt(0).toUpperCase();
+                document.querySelector('.user-role').textContent = user.role || 'Staff';
             } catch (e) {}
         }
 
-        document.getElementById('toggleSidebar').addEventListener('click', () => {
-            document.getElementById('sidebar').classList.toggle('collapsed');
-        });
-
         loadDashboard();
-        setInterval(loadDashboard, 30000);
+        setInterval(loadDashboard, 60000);
     </script>
 </body>
 </html>

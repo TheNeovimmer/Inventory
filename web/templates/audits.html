@@ -1,0 +1,342 @@
+{% extends "layout.html" %}
+
+{% block title %}Stock Audits - Inventory Management{% endblock %}
+{% block page_title %}Stock Audits{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <div class="header-content">
+            <h2><i class="bi bi-clipboard-check"></i> Stock Audits</h2>
+            <p class="text-muted">Cycle counting and inventory verification</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#auditModal">
+            <i class="bi bi-plus-lg"></i> New Audit
+        </button>
+    </div>
+
+    <div class="stats-grid mb-4">
+        <div class="stat-card">
+            <div class="stat-icon bg-info">
+                <i class="bi bi-list-task"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value" id="plannedCount">0</div>
+                <div class="stat-label">Planned</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon bg-warning">
+                <i class="bi bi-play-circle"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value" id="inProgressCount">0</div>
+                <div class="stat-label">In Progress</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon bg-success">
+                <i class="bi bi-check-circle"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value" id="completedCount">0</div>
+                <div class="stat-label">Completed</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="auditsTable">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Warehouse</th>
+                            <th>Status</th>
+                            <th>Items</th>
+                            <th>Verified</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditsBody">
+                        <tr>
+                            <td colspan="8" class="text-center py-4">
+                                <div class="spinner-border spinner-border-sm"></div>
+                                <span class="ms-2">Loading audits...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="auditModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">New Audit Cycle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="auditForm">
+                    <div class="mb-3">
+                        <label class="form-label">Title *</label>
+                        <input type="text" name="title" class="form-control" required placeholder="e.g., Monthly Inventory Count">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Warehouse *</label>
+                        <select name="warehouse_id" class="form-select" required id="auditWarehouse">
+                            <option value="">Select warehouse</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea name="notes" class="form-control" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createAudit()">Create Audit</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="auditDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Audit Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="auditDetailContent">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function loadAudits() {
+    try {
+        const data = await apiCall('/api/audits');
+        renderAudits(data);
+        updateAuditStats(data);
+    } catch (err) {
+        showToast('Failed to load audits', 'danger');
+    }
+}
+
+function updateAuditStats(audits) {
+    document.getElementById('plannedCount').textContent = audits.filter(a => a.status === 'planned').length;
+    document.getElementById('inProgressCount').textContent = audits.filter(a => a.status === 'in_progress').length;
+    document.getElementById('completedCount').textContent = audits.filter(a => a.status === 'completed').length;
+}
+
+function renderAudits(audits) {
+    const tbody = document.getElementById('auditsBody');
+    if (!audits || audits.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">No audits found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = audits.map(a => `
+        <tr>
+            <td><strong>${a.title}</strong></td>
+            <td>${a.warehouse_name || '-'}</td>
+            <td><span class="badge bg-${getAuditStatusColor(a.status)}">${a.status.replace('_', ' ')}</span></td>
+            <td>${a.item_count || 0}</td>
+            <td>${a.verified_count || 0}</td>
+            <td>${a.start_date ? formatDate(a.start_date) : '-'}</td>
+            <td>${a.end_date ? formatDate(a.end_date) : '-'}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="viewAudit(${a.id})">
+                    <i class="bi bi-eye"></i>
+                </button>
+                ${a.status === 'planned' ? `<button class="btn btn-sm btn-outline-success" onclick="startAudit(${a.id})"><i class="bi bi-play"></i></button>` : ''}
+                ${a.status === 'in_progress' ? `<button class="btn btn-sm btn-outline-info" onclick="completeAudit(${a.id})"><i class="bi bi-check"></i></button>` : ''}
+            </td>
+        </tr>
+    `).join('');
+}
+
+function getAuditStatusColor(status) {
+    const colors = {
+        'planned': 'secondary',
+        'in_progress': 'warning',
+        'completed': 'success',
+        'cancelled': 'danger'
+    };
+    return colors[status] || 'secondary';
+}
+
+async function loadWarehouses() {
+    try {
+        const warehouses = await apiCall('/api/warehouses');
+        const options = warehouses.map(w => `<option value="${w.id}">${w.name} (${w.code})</option>`).join('');
+        document.getElementById('auditWarehouse').innerHTML = '<option value="">Select warehouse</option>' + options;
+    } catch (err) {
+        showToast('Failed to load warehouses', 'danger');
+    }
+}
+
+async function createAudit() {
+    const form = document.getElementById('auditForm');
+    const formData = new FormData(form);
+    const data = {
+        title: formData.get('title'),
+        warehouse_id: parseInt(formData.get('warehouse_id')),
+        notes: formData.get('notes')
+    };
+    
+    try {
+        await apiCall('/api/audits', { method: 'POST', body: JSON.stringify(data) });
+        showToast('Audit created successfully', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('auditModal')).hide();
+        loadAudits();
+    } catch (err) {
+        showToast(err.message, 'danger');
+    }
+}
+
+async function viewAudit(id) {
+    try {
+        const audit = await apiCall('/api/audits/' + id);
+        const modal = new bootstrap.Modal(document.getElementById('auditDetailModal'));
+        document.getElementById('auditDetailContent').innerHTML = `
+            <div class="audit-detail">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Title:</strong> ${audit.title}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Status:</strong> <span class="badge bg-${getAuditStatusColor(audit.status)}">${audit.status}</span>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Warehouse:</strong> ${audit.warehouse_name || '-'}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Created:</strong> ${formatDate(audit.created_at)}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <strong>Notes:</strong> ${audit.notes || '-'}
+                </div>
+                <h6>Audit Items</h6>
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>SKU</th>
+                                <th>System Qty</th>
+                                <th>Counted</th>
+                                <th>Variance</th>
+                                <th>Status</th>
+                                ${audit.status === 'in_progress' ? '<th>Action</th>' : ''}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${audit.items.map(item => `
+                                <tr>
+                                    <td>${item.product_name}</td>
+                                    <td>${item.product_sku}</td>
+                                    <td>${item.system_qty}</td>
+                                    <td>${item.counted_qty}</td>
+                                    <td class="${item.variance !== 0 ? (item.variance > 0 ? 'text-success' : 'text-danger') : ''}">
+                                        ${item.variance > 0 ? '+' : ''}${item.variance}
+                                    </td>
+                                    <td><span class="badge bg-${item.status === 'adjusted' ? 'success' : (item.status === 'counted' ? 'warning' : 'secondary')}">${item.status}</span></td>
+                                    ${audit.status === 'in_progress' ? `
+                                        <td>
+                                            ${item.status === 'pending' ? `
+                                                <button class="btn btn-sm btn-outline-primary" onclick="countItem(${audit.id}, ${item.product_id}, ${item.system_qty})">
+                                                    Count
+                                                </button>
+                                            ` : ''}
+                                            ${item.status === 'counted' && item.variance !== 0 ? `
+                                                <button class="btn btn-sm btn-outline-success" onclick="adjustInventory(${audit.id}, ${item.id})">
+                                                    Adjust
+                                                </button>
+                                            ` : ''}
+                                        </td>
+                                    ` : ''}
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        modal.show();
+    } catch (err) {
+        showToast('Failed to load audit details', 'danger');
+    }
+}
+
+async function startAudit(id) {
+    try {
+        await apiCall('/api/audits/' + id + '/start', { method: 'POST' });
+        showToast('Audit started', 'success');
+        loadAudits();
+    } catch (err) {
+        showToast(err.message, 'danger');
+    }
+}
+
+async function completeAudit(id) {
+    try {
+        await apiCall('/api/audits/' + id + '/complete', { method: 'POST' });
+        showToast('Audit completed', 'success');
+        loadAudits();
+    } catch (err) {
+        showToast(err.message, 'danger');
+    }
+}
+
+async function countItem(auditId, productId, systemQty) {
+    const countedQty = prompt('System quantity: ' + systemQty + '\nEnter counted quantity:');
+    if (countedQty === null) return;
+    
+    try {
+        await apiCall('/api/audits/' + auditId + '/count', { 
+            method: 'POST', 
+            body: JSON.stringify({ 
+                product_id: productId, 
+                counted_qty: parseInt(countedQty) 
+            }) 
+        });
+        showToast('Count submitted', 'success');
+        viewAudit(auditId);
+    } catch (err) {
+        showToast(err.message, 'danger');
+    }
+}
+
+async function adjustInventory(auditId, itemId) {
+    if (!confirm('This will update inventory to the counted quantity. Continue?')) return;
+    
+    try {
+        await apiCall('/api/audits/' + auditId + '/adjust/' + itemId, { method: 'POST' });
+        showToast('Inventory adjusted', 'success');
+        viewAudit(auditId);
+    } catch (err) {
+        showToast(err.message, 'danger');
+    }
+}
+
+document.getElementById('auditModal').addEventListener('shown.bs.modal', () => {
+    loadWarehouses();
+    document.getElementById('auditForm').reset();
+});
+
+loadAudits();
+</script>
+{% endblock %}

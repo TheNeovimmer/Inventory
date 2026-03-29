@@ -1,0 +1,255 @@
+{% extends "layout.html" %}
+
+{% block title %}Accounts - Inventory Management{% endblock %}
+{% block page_title %}Accounting{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <div class="header-content">
+            <h2><i class="bi bi-wallet2"></i> Accounting</h2>
+            <p class="text-muted">Manage accounts and transactions</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#transactionModal">
+            <i class="bi bi-plus-lg"></i> New Transaction
+        </button>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-success">
+                    <i class="bi bi-arrow-down-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalIncome">$0.00</div>
+                    <div class="stat-label">Total Income</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-danger">
+                    <i class="bi bi-arrow-up-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalExpense">$0.00</div>
+                    <div class="stat-label">Total Expenses</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-primary">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="netProfit">$0.00</div>
+                    <div class="stat-label">Net Profit</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-info">
+                    <i class="bi bi-bank"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalAssets">$0.00</div>
+                    <div class="stat-label">Total Assets</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Chart of Accounts</h5>
+                </div>
+                <div class="card-body">
+                    <div id="accountsList"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Transactions</h5>
+                    <div>
+                        <select id="txTypeFilter" class="form-select form-select-sm" style="width: auto; display: inline-block;">
+                            <option value="">All Types</option>
+                            <option value="deposit">Income</option>
+                            <option value="expense">Expense</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm" id="transactionsTable">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Description</th>
+                                    <th>Type</th>
+                                    <th>Account</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="transactionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">New Transaction</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="transactionForm">
+                    <div class="mb-3">
+                        <label class="form-label">Type *</label>
+                        <select name="type" class="form-select" required id="txType">
+                            <option value="deposit">Income</option>
+                            <option value="expense">Expense</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Account *</label>
+                        <select name="account_id" class="form-select" required id="txAccount"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Amount *</label>
+                        <input type="number" name="amount" class="form-control" required step="0.01" min="0">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description *</label>
+                        <input type="text" name="description" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Reference</label>
+                        <input type="text" name="reference" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea name="notes" class="form-control" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createTransaction()">Save Transaction</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function loadAccounts() {
+    try {
+        const accounts = await apiCall('/api/accounts');
+        const select = document.getElementById('txAccount');
+        select.innerHTML = accounts.map(a => `<option value="${a.id}">${a.name} (${a.code})</option>`).join('');
+        
+        const list = document.getElementById('accountsList');
+        const byType = { income: [], expense: [], asset: [], liability: [] };
+        accounts.forEach(a => {
+            if (byType[a.account_type]) byType[a.account_type].push(a);
+        });
+        
+        list.innerHTML = Object.entries(byType).map(([type, accs]) => accs.length ? `
+            <div class="mb-3">
+                <strong class="text-uppercase small text-muted">${type}</strong>
+                ${accs.map(a => `
+                    <div class="d-flex justify-content-between py-1 border-bottom">
+                        <span>${a.name}</span>
+                        <span class="${a.balance >= 0 ? 'text-success' : 'text-danger'}">${formatCurrency(a.balance)}</span>
+                    </div>
+                `).join('')}
+            </div>
+        ` : '').join('');
+    } catch (err) {
+        showToast('Failed to load accounts', 'danger');
+    }
+}
+
+async function loadTransactions() {
+    try {
+        const type = document.getElementById('txTypeFilter').value;
+        const url = '/api/accounts/transactions' + (type ? '?type=' + type : '');
+        const data = await apiCall(url);
+        renderTransactions(data);
+    } catch (err) {
+        showToast('Failed to load transactions', 'danger');
+    }
+}
+
+function renderTransactions(transactions) {
+    const tbody = document.getElementById('transactionsBody');
+    if (!transactions || transactions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-muted">No transactions</td></tr>';
+        return;
+    }
+    tbody.innerHTML = transactions.map(t => `
+        <tr>
+            <td>${t.date}</td>
+            <td>${t.description}</td>
+            <td><span class="badge bg-${t.type === 'deposit' ? 'success' : 'danger'}">${t.type}</span></td>
+            <td>${t.account_name}</td>
+            <td class="${t.type === 'deposit' ? 'text-success' : 'text-danger'}">
+                ${t.type === 'deposit' ? '+' : '-'}${formatCurrency(t.amount)}
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function loadSummary() {
+    try {
+        const summary = await apiCall('/api/accounts/summary');
+        document.getElementById('totalIncome').textContent = formatCurrency(summary.total_income);
+        document.getElementById('totalExpense').textContent = formatCurrency(summary.total_expense);
+        document.getElementById('netProfit').textContent = formatCurrency(summary.net_profit);
+        document.getElementById('totalAssets').textContent = formatCurrency(summary.total_assets);
+    } catch (err) {}
+}
+
+async function createTransaction() {
+    const form = document.getElementById('transactionForm');
+    const formData = new FormData(form);
+    const data = {
+        type: formData.get('type'),
+        account_id: parseInt(formData.get('account_id')),
+        amount: parseFloat(formData.get('amount')),
+        description: formData.get('description'),
+        reference: formData.get('reference'),
+        notes: formData.get('notes')
+    };
+    
+    try {
+        await apiCall('/api/accounts/transactions', { method: 'POST', body: JSON.stringify(data) });
+        showToast('Transaction created', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('transactionModal')).hide();
+        form.reset();
+        loadAccounts();
+        loadTransactions();
+        loadSummary();
+    } catch (err) {
+        showToast(err.message, 'danger');
+    }
+}
+
+document.getElementById('txTypeFilter').addEventListener('change', loadTransactions);
+
+loadAccounts();
+loadTransactions();
+loadSummary();
+</script>
+{% endblock %}

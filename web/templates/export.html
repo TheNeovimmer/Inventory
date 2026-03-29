@@ -1,0 +1,131 @@
+{% extends "layout.html" %}
+
+{% block title %}Export Data - Inventory Management{% endblock %}
+{% block page_title %}Export Data{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <div class="header-content">
+            <h2><i class="bi bi-download"></i> Export Data</h2>
+            <p class="text-muted">Download your data in CSV format</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-box me-2"></i>Products</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Export all active products with their details including SKU, name, category, pricing, and reorder points.</p>
+                    <button class="btn btn-primary" onclick="exportData('products')">
+                        <i class="bi bi-download"></i> Download Products CSV
+                    </button>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-clipboard-data me-2"></i>Inventory</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Export current inventory levels for all products including quantities, reserved stock, and available stock.</p>
+                    <button class="btn btn-primary" onclick="exportData('inventory')">
+                        <i class="bi bi-download"></i> Download Inventory CSV
+                    </button>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-arrow-left-right me-2"></i>Transactions</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Export transaction history (last 1000 records) including purchases, sales, adjustments, and transfers.</p>
+                    <button class="btn btn-primary" onclick="exportData('transactions')">
+                        <i class="bi bi-download"></i> Download Transactions CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Dashboard Data</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Export complete dashboard data including KPIs, trends, category breakdown, and top movers in JSON format.</p>
+                    <button class="btn btn-info" onclick="exportData('dashboard-json')">
+                        <i class="bi bi-download"></i> Download Dashboard JSON
+                    </button>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Stock Levels Report</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Export detailed stock levels report including current quantity, reorder point, and status.</p>
+                    <button class="btn btn-secondary" onclick="exportData('stock-levels')">
+                        <i class="bi bi-download"></i> Download Stock Report
+                    </button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Audit Logs</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Export system audit logs showing all user activities and changes.</p>
+                    <button class="btn btn-warning" onclick="exportAuditLogs()">
+                        <i class="bi bi-download"></i> Download Audit Logs
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function exportData(type) {
+    const token = localStorage.getItem('token');
+    const endpoints = {
+        'products': '/api/export/products',
+        'inventory': '/api/export/inventory',
+        'transactions': '/api/export/transactions',
+        'dashboard-json': '/api/analytics/export',
+        'stock-levels': '/api/reports/export/stock-levels'
+    };
+
+    window.location.href = endpoints[type] + '?token=' + token;
+}
+
+async function exportAuditLogs() {
+    try {
+        const logs = await apiCall('/api/audit-logs?limit=1000');
+        
+        let csv = 'ID,Entity Type,Entity ID,Action,Description,User,IP Address,Date\n';
+        logs.forEach(log => {
+            csv += `${log.id},${log.entity_type},${log.entity_id},${log.action},"${log.description || ''}",${log.user_name || ''},${log.ip_address || ''},${log.created_at}\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'audit_logs.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        showToast('Audit logs exported', 'success');
+    } catch (err) {
+        showToast('Failed to export audit logs', 'danger');
+    }
+}
+</script>
+{% endblock %}
