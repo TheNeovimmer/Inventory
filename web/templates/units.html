@@ -1,0 +1,157 @@
+{% extends "layout.html" %}
+
+{% block title %}Units - Posly{% endblock %}
+{% block page %}units{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <div class="header-content">
+            <h2><i class="bi bi-rulers"></i> Units of Measure</h2>
+            <p class="text-muted mb-0">Manage product units (kg, pcs, liters, etc.)</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#unitModal">
+            <i class="bi bi-plus-lg"></i> Add Unit
+        </button>
+    </div>
+
+    <div class="filters-bar">
+        <div class="search-box">
+            <i class="bi bi-search"></i>
+            <input type="text" id="searchUnits" placeholder="Search units..." class="form-control">
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="unitsTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Symbol</th>
+                            <th>Base Unit</th>
+                            <th>Products</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="unitsBody">
+                        <tr>
+                            <td colspan="5" class="text-center py-4">
+                                <div class="spinner-border spinner-border-sm"></div>
+                                <span class="ms-2">Loading units...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="unitModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="unitModalTitle">Add Unit</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="unitForm">
+                    <div class="mb-3">
+                        <label class="form-label">Name *</label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g., Kilogram" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Symbol *</label>
+                        <input type="text" name="symbol" class="form-control" placeholder="e.g., kg" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveUnitBtn">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const API_BASE = '/api';
+
+function getAuthHeaders() {
+    const token = localStorage.getItem('token');
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+    };
+}
+
+async function loadUnits() {
+    const tbody = document.getElementById('unitsBody');
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4"><div class="spinner-border spinner-border-sm"></div><span class="ms-2">Loading...</span></td></tr>`;
+    
+    try {
+        const res = await fetch(`${API_BASE}/units`, { headers: getAuthHeaders() });
+        const data = await res.json();
+        const units = data.units || data || [];
+        
+        if (units.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">No units found. Add your first unit!</td></tr>`;
+            return;
+        }
+        
+        tbody.innerHTML = units.map(u => `
+            <tr>
+                <td><strong>${u.name}</strong></td>
+                <td><code>${u.symbol}</code></td>
+                <td>${u.base_unit ? 'Yes' : '-'}</td>
+                <td>${u.products_count || 0}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteUnit(${u.id})"><i class="bi bi-trash"></i></button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        console.error('Load units error:', e);
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-danger">Error loading units</td></tr>`;
+    }
+}
+
+async function deleteUnit(id) {
+    if (!confirm('Delete this unit?')) return;
+    
+    try {
+        await fetch(`${API_BASE}/units/${id}`, { 
+            method: 'DELETE', 
+            headers: getAuthHeaders() 
+        });
+        loadUnits();
+    } catch (e) { console.error('Delete error:', e); }
+}
+
+document.getElementById('saveUnitBtn').addEventListener('click', async () => {
+    const form = document.getElementById('unitForm');
+    const data = {
+        name: form.name.value,
+        symbol: form.symbol.value
+    };
+    
+    try {
+        await fetch(`${API_BASE}/units`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+        });
+        
+        bootstrap.Modal.getInstance(document.getElementById('unitModal')).hide();
+        form.reset();
+        loadUnits();
+    } catch (e) { console.error('Save error:', e); }
+});
+
+document.addEventListener('DOMContentLoaded', loadUnits);
+</script>
+{% endblock %}

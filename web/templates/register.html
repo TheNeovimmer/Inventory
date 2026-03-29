@@ -3,25 +3,198 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - Inventory Management</title>
+    <title>Register - Posly</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/posly.css">
+    
+    <style>
+        :root {
+            --primary: #0d9488;
+            --primary-dark: #0f766e;
+        }
+        
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0d9488 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        body[data-theme="dark"] {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0d9488 100%);
+        }
+        
+        body[data-theme="light"] {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 50%, #0d9488 100%);
+        }
+        
+        .auth-container {
+            width: 100%;
+            max-width: 440px;
+        }
+        
+        .auth-card {
+            background: var(--bg-card, #fff);
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            padding: 40px;
+            border: 1px solid var(--border, #e2e8f0);
+        }
+        
+        .auth-logo {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #0d9488, #14b8a6);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            box-shadow: 0 10px 15px -3px rgba(13, 148, 136, 0.3);
+        }
+        
+        .auth-logo i {
+            font-size: 28px;
+            color: white;
+        }
+        
+        .auth-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        
+        .auth-header h3 {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 700;
+            font-size: 24px;
+            color: var(--dark, #0f172a);
+            margin-bottom: 8px;
+        }
+        
+        .auth-header p {
+            color: var(--muted, #64748b);
+            font-size: 14px;
+            margin: 0;
+        }
+        
+        .auth-form .form-control {
+            height: 48px;
+            border-radius: 10px;
+            border: 1px solid var(--border, #e2e8f0);
+            background: var(--bg-main, #f8fafc);
+            font-size: 14px;
+        }
+        
+        .auth-form .form-control:focus {
+            border-color: #0d9488;
+            box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+        }
+        
+        .auth-form .input-group-text {
+            background: transparent;
+            border-radius: 10px 0 0 10px;
+            border: 1px solid var(--border, #e2e8f0);
+            border-right: none;
+            color: var(--muted, #64748b);
+        }
+        
+        .auth-form .input-group .form-control {
+            border-radius: 0 10px 10px 0;
+        }
+        
+        .auth-form .btn-primary {
+            height: 48px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 15px;
+            background: linear-gradient(135deg, #0d9488, #14b8a6);
+            border: none;
+            transition: all 0.2s;
+        }
+        
+        .auth-form .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 15px -3px rgba(13, 148, 136, 0.3);
+        }
+        
+        .auth-footer {
+            text-align: center;
+            margin-top: 24px;
+            color: var(--muted, #64748b);
+            font-size: 14px;
+        }
+        
+        .auth-footer a {
+            color: #0d9488;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        
+        .auth-footer a:hover {
+            text-decoration: underline;
+        }
+        
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--bg-card, #fff);
+            border: 1px solid var(--border, #e2e8f0);
+            border-radius: 10px;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--muted, #64748b);
+            transition: all 0.2s;
+            z-index: 1000;
+        }
+        
+        .theme-toggle:hover {
+            background: var(--primary);
+            color: white;
+        }
+        
+        body[data-theme="dark"] .theme-toggle .bi-sun { display: block; }
+        body[data-theme="dark"] .theme-toggle .bi-moon { display: none; }
+        body[data-theme="light"] .theme-toggle .bi-sun { display: none; }
+        body[data-theme="light"] .theme-toggle .bi-moon { display: block; }
+        
+        .alert {
+            border-radius: 10px;
+        }
+    </style>
 </head>
-    <body class="auth-page">
-    <button class="theme-toggle" id="themeToggle" title="Toggle Theme" style="position: fixed; top: 1rem; right: 1rem; z-index: 9999;">
+<body data-theme="light">
+    <button class="theme-toggle" id="themeToggle" title="Toggle Theme">
         <i class="bi bi-sun"></i>
         <i class="bi bi-moon"></i>
     </button>
+    
     <div class="auth-container">
         <div class="auth-card">
             <div class="auth-header">
                 <div class="auth-logo">
-                    <i class="bi bi-box-seam"></i>
+                    <i class="bi bi-shop"></i>
                 </div>
                 <h3>Create Account</h3>
-                <p>Join Inventory Management System</p>
+                <p>Join Posly - POS & Inventory System</p>
             </div>
+            
+            <div id="errorAlert" class="alert alert-danger d-none"></div>
+            <div id="successAlert" class="alert alert-success d-none"></div>
+            
             <form id="registerForm" class="auth-form">
                 <div class="mb-3">
                     <label for="username" class="form-label">Username</label>
@@ -30,13 +203,15 @@
                         <input type="text" class="form-control" id="username" name="username" required>
                     </div>
                 </div>
+                
                 <div class="mb-3">
-                    <label for="email" class="form-label">Email Address</label>
+                    <label for="email" class="form-label">Email</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-envelope"></i></span>
                         <input type="email" class="form-control" id="email" name="email" required>
                     </div>
                 </div>
+                
                 <div class="mb-3">
                     <label for="password" class="form-label">Password</label>
                     <div class="input-group">
@@ -44,71 +219,81 @@
                         <input type="password" class="form-control" id="password" name="password" required minlength="6">
                     </div>
                 </div>
-                <div class="mb-3">
+                
+                <div class="mb-4">
                     <label for="confirmPassword" class="form-label">Confirm Password</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
-                        <input type="password" class="form-control" id="confirmPassword" required>
+                        <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-primary w-100 btn-lg">
-                    <i class="bi bi-person-plus"></i> Create Account
+                
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-person-plus me-2"></i>Create Account
                 </button>
             </form>
+            
             <div class="auth-footer">
-                <p>Already have an account? <a href="/login">Sign in</a></p>
+                Already have an account? <a href="/login">Sign in</a>
             </div>
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
     <script>
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            const current = document.body.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.body.setAttribute('data-theme', next);
+            localStorage.setItem('posly-theme', next);
+        });
+        
+        const savedTheme = localStorage.getItem('posly-theme') || 'light';
+        document.body.setAttribute('data-theme', savedTheme);
+        
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const username = document.getElementById('username').value;
-            const email = document.getElementById('email').value;
+            
+            const errorAlert = document.getElementById('errorAlert');
+            const successAlert = document.getElementById('successAlert');
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
-
+            
+            errorAlert.classList.add('d-none');
+            successAlert.classList.add('d-none');
+            
             if (password !== confirmPassword) {
-                showToast('Passwords do not match', 'danger');
+                errorAlert.textContent = 'Passwords do not match';
+                errorAlert.classList.remove('d-none');
                 return;
             }
-
+            
+            const formData = {
+                username: document.getElementById('username').value,
+                email: document.getElementById('email').value,
+                password: password
+            };
+            
             try {
                 const res = await fetch('/api/auth/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, email, password })
+                    body: JSON.stringify(formData)
                 });
+                
                 const data = await res.json();
                 
                 if (res.ok) {
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    window.location.href = '/dashboard';
+                    successAlert.textContent = 'Account created! Redirecting to login...';
+                    successAlert.classList.remove('d-none');
+                    setTimeout(() => window.location.href = '/login', 1500);
                 } else {
-                    showToast(data.error || 'Registration failed', 'danger');
+                    errorAlert.textContent = data.message || 'Registration failed';
+                    errorAlert.classList.remove('d-none');
                 }
             } catch (err) {
-                showToast('An error occurred', 'danger');
+                errorAlert.textContent = 'An error occurred. Please try again.';
+                errorAlert.classList.remove('d-none');
             }
-        });
-
-        function showToast(message, type) {
-            const container = document.getElementById('toastContainer') || document.body;
-            const toast = document.createElement('div');
-            toast.className = `toast align-items-center text-white bg-${type} border-0`;
-            toast.innerHTML = `<div class="d-flex"><div class="toast-body">${message}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
-            container.appendChild(toast);
-            new bootstrap.Toast(toast).show();
-        }
-
-        document.getElementById('themeToggle')?.addEventListener('click', () => {
-            const current = document.documentElement.getAttribute('data-theme');
-            const next = current === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', next);
-            localStorage.setItem('ims-theme', next);
         });
     </script>
 </body>

@@ -558,6 +558,238 @@ async function runTests() {
     results.failed++;
   }
 
+  // Test 18: Quotations Page
+  console.log('\nTest 18: Quotations Page');
+  await setup();
+  try {
+    await login();
+    await page.goto(BASE_URL + '/quotations');
+    await page.waitForLoadState('networkidle');
+    
+    const quotTable = await page.$('#quotationsTable');
+    if (quotTable) {
+      console.log('  ✓ Quotations page loads');
+      results.passed++;
+    } else {
+      throw new Error('Quotations table not found');
+    }
+    
+    const newBtn = await page.$('button:has-text("New Quotation")');
+    if (newBtn) {
+      console.log('  ✓ New Quotation button exists');
+      results.passed++;
+    }
+  } catch (err) {
+    console.log(`  ✗ Quotations test failed: ${err.message}`);
+    results.failed++;
+  }
+  await teardown();
+
+  // Test 19: Brands Page
+  console.log('\nTest 19: Brands Page');
+  await setup();
+  try {
+    await login();
+    await page.goto(BASE_URL + '/brands');
+    await page.waitForLoadState('networkidle');
+    
+    const brandsTable = await page.$('#brandsTable');
+    if (brandsTable) {
+      console.log('  ✓ Brands page loads');
+      results.passed++;
+    } else {
+      throw new Error('Brands table not found');
+    }
+    
+    const newBtn = await page.$('button:has-text("Add Brand")');
+    if (newBtn) {
+      console.log('  ✓ Add Brand button exists');
+      results.passed++;
+    }
+  } catch (err) {
+    console.log(`  ✗ Brands test failed: ${err.message}`);
+    results.failed++;
+  }
+  await teardown();
+
+  // Test 20: Units Page
+  console.log('\nTest 20: Units Page');
+  await setup();
+  try {
+    await login();
+    await page.goto(BASE_URL + '/units');
+    await page.waitForLoadState('networkidle');
+    
+    const unitsTable = await page.$('#unitsTable');
+    if (unitsTable) {
+      console.log('  ✓ Units page loads');
+      results.passed++;
+    } else {
+      throw new Error('Units table not found');
+    }
+  } catch (err) {
+    console.log(`  ✗ Units test failed: ${err.message}`);
+    results.failed++;
+  }
+  await teardown();
+
+  // Test 21: Suppliers Page
+  console.log('\nTest 21: Suppliers Page');
+  await setup();
+  try {
+    await login();
+    await page.goto(BASE_URL + '/suppliers');
+    await page.waitForLoadState('networkidle');
+    
+    const suppliersTable = await page.$('#suppliersTable');
+    if (suppliersTable) {
+      console.log('  ✓ Suppliers page loads');
+      results.passed++;
+    } else {
+      throw new Error('Suppliers table not found');
+    }
+    
+    const newBtn = await page.$('button:has-text("Add Supplier")');
+    if (newBtn) {
+      console.log('  ✓ Add Supplier button exists');
+      results.passed++;
+    }
+  } catch (err) {
+    console.log(`  ✗ Suppliers test failed: ${err.message}`);
+    results.failed++;
+  }
+  await teardown();
+
+  // Test 22: Purchase Orders Page
+  console.log('\nTest 22: Purchase Orders Page');
+  await setup();
+  try {
+    await login();
+    await page.goto(BASE_URL + '/purchase-orders');
+    await page.waitForLoadState('networkidle');
+    
+    const poTable = await page.$('#poTable');
+    if (poTable) {
+      console.log('  ✓ Purchase Orders page loads');
+      results.passed++;
+    } else {
+      throw new Error('PO table not found');
+    }
+  } catch (err) {
+    console.log(`  ✗ Purchase Orders test failed: ${err.message}`);
+    results.failed++;
+  }
+  await teardown();
+
+  // Test 23: Production Page
+  console.log('\nTest 23: Production Page');
+  await setup();
+  try {
+    await login();
+    await page.goto(BASE_URL + '/production');
+    await page.waitForLoadState('networkidle');
+    
+    const prodTable = await page.$('#productionTable');
+    if (prodTable) {
+      console.log('  ✓ Production page loads');
+      results.passed++;
+    } else {
+      throw new Error('Production table not found');
+    }
+  } catch (err) {
+    console.log(`  ✗ Production test failed: ${err.message}`);
+    results.failed++;
+  }
+  await teardown();
+
+  // Test 24: BOM Page
+  console.log('\nTest 24: BOM Page');
+  await setup();
+  try {
+    await login();
+    await page.goto(BASE_URL + '/bom');
+    await page.waitForLoadState('networkidle');
+    
+    const bomTable = await page.$('#bomTable');
+    if (bomTable) {
+      console.log('  ✓ BOM page loads');
+      results.passed++;
+    } else {
+      throw new Error('BOM table not found');
+    }
+  } catch (err) {
+    console.log(`  ✗ BOM test failed: ${err.message}`);
+    results.failed++;
+  }
+  await teardown();
+
+  // Test 25: Inventory Page
+  console.log('\nTest 25: Inventory Page');
+  await setup();
+  try {
+    await login();
+    await page.goto(BASE_URL + '/inventory');
+    await page.waitForLoadState('networkidle');
+    
+    const invTable = await page.$('#inventoryTable');
+    if (invTable) {
+      console.log('  ✓ Inventory page loads');
+      results.passed++;
+    } else {
+      throw new Error('Inventory table not found');
+    }
+    
+    const alertsTable = await page.$('#alertsTable');
+    if (alertsTable) {
+      console.log('  ✓ Alerts section exists');
+      results.passed++;
+    }
+  } catch (err) {
+    console.log(`  ✗ Inventory test failed: ${err.message}`);
+    results.failed++;
+  }
+  await teardown();
+
+  // Test 26: Categories Page
+  console.log('\nTest 26: Categories Page');
+  await setup();
+  try {
+    await login();
+    await page.goto(BASE_URL + '/categories');
+    await page.waitForLoadState('networkidle');
+    
+    const catTable = await page.$('#categoriesTable');
+    if (catTable) {
+      console.log('  ✓ Categories page loads');
+      results.passed++;
+    } else {
+      throw new Error('Categories table not found');
+    }
+  } catch (err) {
+    console.log(`  ✗ Categories test failed: ${err.message}`);
+    results.failed++;
+  }
+  await teardown();
+
+  // Test 27: Transactions Page
+  console.log('\nTest 27: Transactions Page');
+  await setup();
+  try {
+    await login();
+    await page.goto(BASE_URL + '/transactions');
+    await page.waitForLoadState('networkidle');
+    
+    const transTable = await page.$('#transactionsTable');
+    if (transTable) {
+      console.log('  ✓ Transactions page loads');
+      results.passed++;
+    } else {
+      throw new Error('Transactions table not found');
+    }
+  } catch (err) {
+    console.log(`  ✗ Transactions test failed: ${err.message}`);
+    results.failed++;
+  }
   await teardown();
 
   // Print summary

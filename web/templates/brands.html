@@ -1,0 +1,184 @@
+{% extends "layout.html" %}
+
+{% block title %}Brands - Posly{% endblock %}
+{% block page %}brands{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <div class="header-content">
+            <h2><i class="bi bi-award"></i> Brands</h2>
+            <p class="text-muted mb-0">Manage product brands</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#brandModal">
+            <i class="bi bi-plus-lg"></i> Add Brand
+        </button>
+    </div>
+
+    <div class="filters-bar">
+        <div class="search-box">
+            <i class="bi bi-search"></i>
+            <input type="text" id="searchBrands" placeholder="Search brands..." class="form-control">
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="brandsTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th>Products</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="brandsBody">
+                        <tr>
+                            <td colspan="5" class="text-center py-4">
+                                <div class="spinner-border spinner-border-sm"></div>
+                                <span class="ms-2">Loading brands...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="brandModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="brandModalTitle">Add Brand</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="brandForm">
+                    <input type="hidden" name="id" id="brandId">
+                    <div class="mb-3">
+                        <label class="form-label">Name *</label>
+                        <input type="text" name="name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-control" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveBrandBtn">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const API_BASE = '/api';
+
+function getAuthHeaders() {
+    const token = localStorage.getItem('token');
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+    };
+}
+
+async function loadBrands() {
+    const tbody = document.getElementById('brandsBody');
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4"><div class="spinner-border spinner-border-sm"></div><span class="ms-2">Loading...</span></td></tr>`;
+    
+    try {
+        const res = await fetch(`${API_BASE}/brands`, { headers: getAuthHeaders() });
+        const data = await res.json();
+        const brands = data.brands || data || [];
+        
+        if (brands.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">No brands found</td></tr>`;
+            return;
+        }
+        
+        tbody.innerHTML = brands.map(b => `
+            <tr>
+                <td><strong>${b.name}</strong></td>
+                <td>${b.description || '-'}</td>
+                <td>${b.products_count || b.product_count || 0}</td>
+                <td><span class="badge bg-success">Active</span></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="editBrand(${b.id}, '${b.name}', '${b.description || ''}')"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteBrand(${b.id})"><i class="bi bi-trash"></i></button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        console.error('Load brands error:', e);
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-danger">Error loading brands</td></tr>`;
+    }
+}
+
+function editBrand(id, name, description) {
+    document.getElementById('brandId').value = id;
+    document.querySelector('#brandForm [name="name"]').value = name;
+    document.querySelector('#brandForm [name="description"]').value = description;
+    document.getElementById('brandModalTitle').textContent = 'Edit Brand';
+    new bootstrap.Modal(document.getElementById('brandModal')).show();
+}
+
+async function deleteBrand(id) {
+    if (!confirm('Delete this brand?')) return;
+    
+    try {
+        await fetch(`${API_BASE}/brands/${id}`, { 
+            method: 'DELETE', 
+            headers: getAuthHeaders() 
+        });
+        loadBrands();
+    } catch (e) { console.error('Delete error:', e); }
+}
+
+document.getElementById('saveBrandBtn').addEventListener('click', async () => {
+    const form = document.getElementById('brandForm');
+    const id = document.getElementById('brandId').value;
+    const data = {
+        name: form.name.value,
+        description: form.description.value
+    };
+    
+    try {
+        if (id) {
+            await fetch(`${API_BASE}/brands/${id}`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(data)
+            });
+        } else {
+            await fetch(`${API_BASE}/brands`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(data)
+            });
+        }
+        
+        bootstrap.Modal.getInstance(document.getElementById('brandModal')).hide();
+        form.reset();
+        document.getElementById('brandId').value = '';
+        document.getElementById('brandModalTitle').textContent = 'Add Brand';
+        loadBrands();
+    } catch (e) { console.error('Save error:', e); }
+});
+
+document.getElementById('brandModal').addEventListener('hidden.bs.modal', () => {
+    document.getElementById('brandForm').reset();
+    document.getElementById('brandId').value = '';
+    document.getElementById('brandModalTitle').textContent = 'Add Brand';
+});
+
+document.addEventListener('DOMContentLoaded', loadBrands);
+</script>
+{% endblock %}

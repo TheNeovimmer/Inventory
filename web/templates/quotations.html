@@ -1,0 +1,448 @@
+{% extends "layout.html" %}
+
+{% block title %}Quotations - Posly{% endblock %}
+{% block page %}quotations{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <div class="header-content">
+            <h2><i class="bi bi-file-earmark-text"></i> Quotations</h2>
+            <p class="text-muted mb-0">Manage price quotes and proposals</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#quotationModal">
+            <i class="bi bi-plus-lg"></i> New Quotation
+        </button>
+    </div>
+
+    <div class="filters-bar">
+        <div class="search-box">
+            <i class="bi bi-search"></i>
+            <input type="text" id="searchQuotations" placeholder="Search quotations..." class="form-control">
+        </div>
+        <select id="statusFilter" class="form-select">
+            <option value="">All Status</option>
+            <option value="draft">Draft</option>
+            <option value="sent">Sent</option>
+            <option value="accepted">Accepted</option>
+            <option value="rejected">Rejected</option>
+            <option value="expired">Expired</option>
+        </select>
+        <input type="date" id="startDate" class="form-control">
+        <input type="date" id="endDate" class="form-control">
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: var(--primary);">
+                    <i class="bi bi-file-earmark-text"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalQuotations">0</div>
+                    <div class="stat-label">Total Quotations</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: var(--success);">
+                    <i class="bi bi-check-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="acceptedCount">0</div>
+                    <div class="stat-label">Accepted</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: var(--warning);">
+                    <i class="bi bi-clock"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="pendingCount">0</div>
+                    <div class="stat-label">Pending</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: var(--info);">
+                    <i class="bi bi-currency-dollar"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalValue">$0.00</div>
+                    <div class="stat-label">Total Value</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="quotationsTable">
+                    <thead>
+                        <tr>
+                            <th>Quote #</th>
+                            <th>Customer</th>
+                            <th>Items</th>
+                            <th>Total</th>
+                            <th>Valid Until</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="quotationsBody">
+                        <tr>
+                            <td colspan="8" class="text-center py-4">
+                                <div class="spinner-border spinner-border-sm"></div>
+                                <span class="ms-2">Loading quotations...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="quotationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">New Quotation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="quotationForm">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Customer *</label>
+                            <select name="customer_id" class="form-select" required>
+                                <option value="">Select Customer</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Valid Until *</label>
+                            <input type="date" name="valid_until" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea name="notes" class="form-control" rows="2" placeholder="Terms, conditions, or notes..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Products</label>
+                        <div id="quotationItems">
+                            <div class="row g-2 mb-2 item-row">
+                                <div class="col-md-5">
+                                    <select name="product_id" class="form-select product-select">
+                                        <option value="">Select Product</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="number" name="quantity" class="form-control" placeholder="Qty" min="1" value="1">
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="number" name="unit_price" class="form-control" placeholder="Unit Price" step="0.01">
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-outline-danger w-100 remove-item"><i class="bi bi-trash"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="addItemBtn">
+                            <i class="bi bi-plus"></i> Add Item
+                        </button>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-8 text-end">
+                            <strong>Total:</strong>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <strong id="quotationTotal">$0.00</strong>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveQuotationBtn">Save as Draft</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="viewQuotationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Quotation Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="quotationDetails">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-success" id="convertToSaleBtn">Convert to Sale</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const API_BASE = '/api';
+
+function getAuthHeaders() {
+    const token = localStorage.getItem('token');
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+    };
+}
+
+async function loadCustomers() {
+    try {
+        const res = await fetch(`${API_BASE}/customers`, { headers: getAuthHeaders() });
+        const data = await res.json();
+        const customers = data.customers || data || [];
+        
+        document.querySelectorAll('[name="customer_id"]').forEach(select => {
+            customers.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name;
+                select.appendChild(opt);
+            });
+        });
+    } catch (e) { console.error('Load customers error:', e); }
+}
+
+async function loadProducts() {
+    try {
+        const res = await fetch(`${API_BASE}/products`, { headers: getAuthHeaders() });
+        const data = await res.json();
+        const products = data.products || data || [];
+        
+        document.querySelectorAll('.product-select').forEach(select => {
+            products.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = `${p.name} - $${parseFloat(p.price || 0).toFixed(2)}`;
+                select.appendChild(opt);
+            });
+        });
+    } catch (e) { console.error('Load products error:', e); }
+}
+
+async function loadQuotations() {
+    const tbody = document.getElementById('quotationsBody');
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4"><div class="spinner-border spinner-border-sm"></div><span class="ms-2">Loading...</span></td></tr>`;
+    
+    try {
+        const res = await fetch(`${API_BASE}/quotations`, { headers: getAuthHeaders() });
+        const data = await res.json();
+        const quotations = data.quotations || data || [];
+        
+        if (quotations.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-muted">No quotations found</td></tr>`;
+            return;
+        }
+        
+        let total = 0, accepted = 0, pending = 0;
+        
+        tbody.innerHTML = quotations.map(q => {
+            const statusClass = q.status === 'accepted' ? 'success' : 
+                              q.status === 'rejected' ? 'danger' : 
+                              q.status === 'expired' ? 'warning' : 'info';
+            const totalAmount = parseFloat(q.total || 0);
+            total += totalAmount;
+            if (q.status === 'accepted') accepted++;
+            if (q.status === 'sent' || q.status === 'draft') pending++;
+            
+            return `
+            <tr>
+                <td><strong>${q.quote_number || q.id}</strong></td>
+                <td>${q.customer_name || q.customer?.name || '-'}</td>
+                <td>${q.items?.length || 0}</td>
+                <td>$${totalAmount.toFixed(2)}</td>
+                <td>${q.valid_until ? new Date(q.valid_until).toLocaleDateString() : '-'}</td>
+                <td><span class="badge bg-${statusClass}">${q.status || 'draft'}</span></td>
+                <td>${q.created_at ? new Date(q.created_at).toLocaleDateString() : '-'}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="viewQuotation(${q.id})"><i class="bi bi-eye"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteQuotation(${q.id})"><i class="bi bi-trash"></i></button>
+                </td>
+            </tr>`;
+        }).join('');
+        
+        document.getElementById('totalQuotations').textContent = quotations.length;
+        document.getElementById('acceptedCount').textContent = accepted;
+        document.getElementById('pendingCount').textContent = pending;
+        document.getElementById('totalValue').textContent = `$${total.toFixed(2)}`;
+    } catch (e) {
+        console.error('Load quotations error:', e);
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-danger">Error loading quotations</td></tr>`;
+    }
+}
+
+async function viewQuotation(id) {
+    try {
+        const res = await fetch(`${API_BASE}/quotations/${id}`, { headers: getAuthHeaders() });
+        const q = await res.json();
+        
+        const details = document.getElementById('quotationDetails');
+        details.innerHTML = `
+            <div class="row mb-3">
+                <div class="col-md-6"><strong>Quote #:</strong> ${q.quote_number || id}</div>
+                <div class="col-md-6"><strong>Status:</strong> <span class="badge bg-${q.status === 'accepted' ? 'success' : 'info'}">${q.status || 'draft'}</span></div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6"><strong>Customer:</strong> ${q.customer_name || q.customer?.name || '-'}</div>
+                <div class="col-md-6"><strong>Date:</strong> ${q.created_at ? new Date(q.created_at).toLocaleDateString() : '-'}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6"><strong>Valid Until:</strong> ${q.valid_until ? new Date(q.valid_until).toLocaleDateString() : '-'}</div>
+                <div class="col-md-6"><strong>Total:</strong> $${parseFloat(q.total || 0).toFixed(2)}</div>
+            </div>
+            <h6>Items</h6>
+            <table class="table table-sm">
+                <thead><tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
+                <tbody>
+                    ${(q.items || []).map(item => `
+                        <tr>
+                            <td>${item.product_name || item.product?.name || '-'}</td>
+                            <td>${item.quantity}</td>
+                            <td>$${parseFloat(item.unit_price || 0).toFixed(2)}</td>
+                            <td>$${parseFloat(item.quantity * item.unit_price || 0).toFixed(2)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            ${q.notes ? `<div class="mt-3"><strong>Notes:</strong><p class="mb-0">${q.notes}</p></div>` : ''}
+        `;
+        
+        document.getElementById('convertToSaleBtn').onclick = () => convertToSale(id);
+        
+        const modal = new bootstrap.Modal(document.getElementById('viewQuotationModal'));
+        modal.show();
+    } catch (e) { console.error('View quotation error:', e); }
+}
+
+async function deleteQuotation(id) {
+    if (!confirm('Delete this quotation?')) return;
+    
+    try {
+        await fetch(`${API_BASE}/quotations/${id}`, { 
+            method: 'DELETE', 
+            headers: getAuthHeaders() 
+        });
+        loadQuotations();
+    } catch (e) { console.error('Delete error:', e); }
+}
+
+async function convertToSale(id) {
+    try {
+        const res = await fetch(`${API_BASE}/quotations/${id}`, { headers: getAuthHeaders() });
+        const q = await res.json();
+        
+        const saleData = {
+            customer_id: q.customer_id,
+            items: q.items,
+            total: q.total,
+            status: 'completed',
+            payment_status: 'paid',
+            payment_method: 'cash'
+        };
+        
+        await fetch(`${API_BASE}/sales`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(saleData)
+        });
+        
+        await fetch(`${API_BASE}/quotations/${id}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ status: 'accepted' })
+        });
+        
+        bootstrap.Modal.getInstance(document.getElementById('viewQuotationModal')).hide();
+        window.location.href = '/sales';
+    } catch (e) { console.error('Convert to sale error:', e); }
+}
+
+document.getElementById('addItemBtn').addEventListener('click', () => {
+    const div = document.createElement('div');
+    div.className = 'row g-2 mb-2 item-row';
+    div.innerHTML = `
+        <div class="col-md-5">
+            <select name="product_id" class="form-select product-select">
+                <option value="">Select Product</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <input type="number" name="quantity" class="form-control" placeholder="Qty" min="1" value="1">
+        </div>
+        <div class="col-md-3">
+            <input type="number" name="unit_price" class="form-control" placeholder="Unit Price" step="0.01">
+        </div>
+        <div class="col-md-2">
+            <button type="button" class="btn btn-outline-danger w-100 remove-item"><i class="bi bi-trash"></i></button>
+        </div>
+    `;
+    document.getElementById('quotationItems').appendChild(div);
+    loadProducts();
+});
+
+document.getElementById('quotationItems').addEventListener('click', (e) => {
+    if (e.target.closest('.remove-item')) {
+        e.target.closest('.item-row').remove();
+    }
+});
+
+document.getElementById('saveQuotationBtn').addEventListener('click', async () => {
+    const form = document.getElementById('quotationForm');
+    const items = [];
+    document.querySelectorAll('.item-row').forEach(row => {
+        const productId = row.querySelector('[name="product_id"]').value;
+        const qty = row.querySelector('[name="quantity"]').value;
+        const price = row.querySelector('[name="unit_price"]').value;
+        if (productId) {
+            items.push({ product_id: productId, quantity: parseInt(qty), unit_price: parseFloat(price) });
+        }
+    });
+    
+    const data = {
+        customer_id: form.customer_id.value,
+        valid_until: form.valid_until.value,
+        notes: form.notes.value,
+        items: items,
+        status: 'draft'
+    };
+    
+    try {
+        await fetch(`${API_BASE}/quotations`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+        });
+        
+        bootstrap.Modal.getInstance(document.getElementById('quotationModal')).hide();
+        form.reset();
+        loadQuotations();
+    } catch (e) { console.error('Save error:', e); }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadCustomers();
+    loadProducts();
+    loadQuotations();
+});
+</script>
+{% endblock %}

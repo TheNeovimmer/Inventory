@@ -1,268 +1,351 @@
-<!DOCTYPE html>
-<html lang="en" hx-ext="modal">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bill of Materials - Inventory Management</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="/static/css/styles.css">
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"></script>
-</head>
-<body hx-ext="modal" hx-indicator="body">
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <h5><i class="bi bi-box-seam"></i> <span class="sidebar-text">IMS</span></h5>
+{% extends "layout.html" %}
+
+{% block title %}Bill of Materials - Posly{% endblock %}
+{% block page %}bom{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <div class="header-content">
+            <h2><i class="bi bi-diagram-3"></i> Bill of Materials</h2>
+            <p class="text-muted mb-0">Manage product recipes and ingredient lists</p>
         </div>
-        <nav class="sidebar-nav">
-            <a href="/dashboard" class="nav-link"><i class="bi bi-grid-1x2"></i> <span class="sidebar-text">Dashboard</span></a>
-            <a href="/products" class="nav-link"><i class="bi bi-box"></i> <span class="sidebar-text">Products</span></a>
-            <a href="/categories" class="nav-link"><i class="bi bi-tags"></i> <span class="sidebar-text">Categories</span></a>
-            <a href="/inventory" class="nav-link"><i class="bi bi-clipboard-data"></i> <span class="sidebar-text">Inventory</span></a>
-            <div class="nav-section-title">Production</div>
-            <a href="/bom" class="nav-link active"><i class="bi bi-diagram-3"></i> <span class="sidebar-text">Bill of Materials</span></a>
-            <a href="/production" class="nav-link"><i class="bi bi-hammer"></i> <span class="sidebar-text">Production Orders</span></a>
-            <div class="nav-section-title">Procurement</div>
-            <a href="/suppliers" class="nav-link"><i class="bi bi-truck"></i> <span class="sidebar-text">Suppliers</span></a>
-            <a href="/purchase-orders" class="nav-link"><i class="bi bi-receipt"></i> <span class="sidebar-text">Purchase Orders</span></a>
-            <div class="nav-section-title">Analytics</div>
-            <a href="/transactions" class="nav-link"><i class="bi bi-arrow-left-right"></i> <span class="sidebar-text">Transactions</span></a>
-            <a href="/reports" class="nav-link"><i class="bi bi-graph-up"></i> <span class="sidebar-text">Reports</span></a>
-            <div class="nav-section-title">System</div>
-            <a href="/settings" class="nav-link"><i class="bi bi-gear"></i> <span class="sidebar-text">Settings</span></a>
-        </nav>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#bomModal">
+            <i class="bi bi-plus-lg"></i> New BOM
+        </button>
     </div>
 
-    <div class="main-content">
-        <header class="topbar">
-            <button class="btn btn-link toggle-btn" id="toggleSidebar"><i class="bi bi-list"></i></button>
-            <div class="topbar-title"><h4>Bill of Materials</h4></div>
-            <div class="topbar-actions">
-                <button class="theme-toggle" id="themeToggle" title="Toggle Theme">
-                    <i class="bi bi-sun"></i>
-                    <i class="bi bi-moon"></i>
-                </button>
-                <div class="dropdown">
-                    <button class="user-dropdown" data-bs-toggle="dropdown" id="userDropdown">
-                        <div class="user-avatar">A</div>
-                        <span id="currentUser">Admin</span>
-                        <i class="bi bi-chevron-down"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="/settings"><i class="bi bi-gear"></i> Settings</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#" id="logoutBtn"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
-                    </ul>
-                </div>
-            </div>
-        </header>
-        
-        <main class="content">
-            <div class="page-header">
-                <h4 class="mb-0">Bill of Materials</h4>
-                <button class="btn btn-primary" onclick="showBOMModal()">
-                    <i class="bi bi-plus-lg"></i> Create BOM
-                </button>
-            </div>
-
-            <div class="row" id="bomList">
-                <div class="col-12 text-center py-4 text-muted">Loading...</div>
-            </div>
-        </main>
+    <div class="filters-bar">
+        <div class="search-box">
+            <i class="bi bi-search"></i>
+            <input type="text" id="searchBOM" placeholder="Search BOMs..." class="form-control">
+        </div>
     </div>
 
-    <div class="modal fade" id="bomModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Create BOM</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: var(--primary);">
+                    <i class="bi bi-diagram-3"></i>
                 </div>
-                <form id="bomForm" onsubmit="saveBOM(event)">
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">Finished Product *</label>
-                            <select class="form-select" id="bomProduct" required></select>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalBOMs">0</div>
+                    <div class="stat-label">Total BOMs</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: var(--success);">
+                    <i class="bi bi-check-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="activeBOMs">0</div>
+                    <div class="stat-label">Active</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: var(--info);">
+                    <i class="bi bi-boxes"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalComponents">0</div>
+                    <div class="stat-label">Total Components</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="bomTable">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Description</th>
+                            <th>Components</th>
+                            <th>Total Cost</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bomBody">
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <div class="spinner-border spinner-border-sm"></div>
+                                <span class="ms-2">Loading BOMs...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="bomModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">New Bill of Materials</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="bomForm">
+                    <div class="mb-3">
+                        <label class="form-label">Finished Product *</label>
+                        <select name="product_id" class="form-select" required>
+                            <option value="">Select Product</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Components</label>
+                        <div id="bomItems">
+                            <div class="row g-2 mb-2 item-row">
+                                <div class="col-md-5">
+                                    <select name="component_id" class="form-select component-select">
+                                        <option value="">Select Component</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="number" name="quantity" class="form-control" placeholder="Qty" min="0.01" step="0.01" value="1">
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="number" name="unit_cost" class="form-control" placeholder="Unit Cost" step="0.01">
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-outline-danger w-100 remove-item"><i class="bi bi-trash"></i></button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Version</label>
-                            <input type="number" class="form-control" id="bomVersion" value="1">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Notes</label>
-                            <textarea class="form-control" id="bomNotes" rows="2"></textarea>
-                        </div>
-                        <hr>
-                        <h6>Components</h6>
-                        <div id="bomItems"></div>
-                        <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="addBomItem()">
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="addItemBtn">
                             <i class="bi bi-plus"></i> Add Component
                         </button>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Create BOM</button>
-                    </div>
                 </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveBomBtn">Save BOM</button>
             </div>
         </div>
     </div>
+</div>
 
-    <div class="toast-container" id="toastContainer"></div>
+<div class="modal fade" id="viewBomModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">BOM Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="bomDetails"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
 
-    <script>
-        // Initialize theme on page load
-        (function initTheme() {
-            const saved = localStorage.getItem('ims-theme');
-            if (saved) {
-                document.documentElement.setAttribute('data-theme', saved);
-            } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                document.documentElement.setAttribute('data-theme', 'dark');
-            }
-        })();
+{% block extra_js %}
+<script>
+const API_BASE = '/api';
 
-        let products = [];
-        let boms = [];
+function getAuthHeaders() {
+    const token = localStorage.getItem('token');
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+    };
+}
 
-        function getToken() { return localStorage.getItem('token'); }
+async function loadProductsForBOM() {
+    try {
+        const res = await fetch(`${API_BASE}/products`, { headers: getAuthHeaders() });
+        const data = await res.json();
+        const products = data.products || data || [];
         
-        async function apiCall(url, options = {}) {
-            const headers = { 'Content-Type': 'application/json', ...options.headers };
-            const token = getToken();
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-            const response = await fetch(url, { ...options, headers });
-            if (response.status === 401) { window.location.href = '/login'; throw new Error('Unauthorized'); }
-            if (!response.ok) { const err = await response.json(); throw new Error(err.error || 'Error'); }
-            return response.json();
-        }
-
-        function showToast(message, type = 'success') {
-            const toast = document.createElement('div');
-            toast.className = `toast align-items-center text-white bg-${type} border-0 show`;
-            toast.innerHTML = `<div class="d-flex"><div class="toast-body">${message}</div><button class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
-            document.getElementById('toastContainer').appendChild(toast);
-            setTimeout(() => toast.remove(), 4000);
-        }
-
-        async function loadBOMs() {
-            try {
-                boms = await apiCall('/api/bom');
-                renderBOMs();
-            } catch (err) { showToast('Failed to load BOMs', 'danger'); }
-        }
-
-        async function loadProducts() {
-            try {
-                products = await apiCall('/api/products');
-                const select = document.getElementById('bomProduct');
-                select.innerHTML = '<option value="">Select product...</option>' + 
-                    products.filter(p => p.has_bom).map(p => `<option value="${p.id}">${p.name} (${p.sku})</option>`).join('');
-            } catch (err) { console.error(err); }
-        }
-
-        function renderBOMs() {
-            const container = document.getElementById('bomList');
-            if (!boms.length) {
-                container.innerHTML = '<div class="col-12 text-center py-4 text-muted">No BOMs found. Create one to start manufacturing.</div>';
-                return;
-            }
-            container.innerHTML = boms.map(bom => `
-                <div class="col-md-6 col-lg-4 mb-4">
-                    <div class="card h-100">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <span class="fw-bold">${bom.product_name}</span>
-                            <span class="badge bg-primary">v${bom.version}</span>
-                        </div>
-                        <div class="card-body">
-                            <small class="text-muted">Components:</small>
-                            <ul class="mb-0 mt-2">
-                                ${bom.items.map(item => `<li>${item.component_name} - ${item.quantity_required}</li>`).join('')}
-                            </ul>
-                            ${bom.notes ? `<p class="small text-muted mt-2 mb-0">${bom.notes}</p>` : ''}
-                        </div>
-                    </div>
-                </div>`).join('');
-        }
-
-        function showBOMModal() {
-            document.getElementById('bomForm').reset();
-            document.getElementById('bomItems').innerHTML = '';
-            addBomItem();
-            loadProducts();
-            new bootstrap.Modal(document.getElementById('bomModal')).show();
-        }
-
-        function addBomItem() {
-            const div = document.createElement('div');
-            div.className = 'row g-2 mb-2 bom-item-row';
-            div.innerHTML = `
-                <div class="col-7">
-                    <select class="form-select" required>
-                        <option value="">Select component...</option>
-                        ${products.map(p => `<option value="${p.id}">${p.name} (${p.sku})</option>`).join('')}
-                    </select>
-                </div>
-                <div class="col-3">
-                    <input type="number" class="form-control" placeholder="Qty" step="0.001" required>
-                </div>
-                <div class="col-2">
-                    <button type="button" class="btn btn-outline-danger w-100" onclick="this.closest('.bom-item-row').remove()">
-                        <i class="bi bi-x"></i>
-                    </button>
-                </div>`;
-            document.getElementById('bomItems').appendChild(div);
-        }
-
-        async function saveBOM(e) {
-            e.preventDefault();
-            const items = [];
-            document.querySelectorAll('.bom-item-row').forEach(row => {
-                const select = row.querySelector('select');
-                const input = row.querySelector('input');
-                if (select.value && input.value) {
-                    items.push({ component_product_id: parseInt(select.value), quantity_required: parseFloat(input.value) });
-                }
+        document.querySelectorAll('[name="product_id"]').forEach(select => {
+            products.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = p.name;
+                select.appendChild(opt);
             });
-
-            try {
-                await apiCall('/api/bom', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        product_id: parseInt(document.getElementById('bomProduct').value),
-                        version: parseInt(document.getElementById('bomVersion').value),
-                        notes: document.getElementById('bomNotes').value,
-                        items: items
-                    })
-                });
-                showToast('BOM created');
-                bootstrap.Modal.getInstance(document.getElementById('bomModal')).hide();
-                loadBOMs();
-            } catch (err) { showToast(err.message, 'danger'); }
-        }
-
-        document.getElementById('logoutBtn').addEventListener('click', (e) => {
-            e.preventDefault();
-            localStorage.removeItem('token');
-            window.location.href = '/login';
         });
-        document.getElementById('themeToggle')?.addEventListener('click', () => {
-            const current = document.documentElement.getAttribute('data-theme');
-            const next = current === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', next);
-            localStorage.setItem('ims-theme', next);
+        
+        document.querySelectorAll('.component-select').forEach(select => {
+            products.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = `${p.name} - $${parseFloat(p.cost || 0).toFixed(2)}`;
+                select.appendChild(opt);
+            });
         });
-        document.getElementById('toggleSidebar').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('collapsed'));
-        const userStr = localStorage.getItem('user');
-        if (userStr) {
-            try { 
-                const user = JSON.parse(userStr);
-                document.getElementById('currentUser').textContent = user.username;
-                const avatar = document.querySelector('.user-avatar');
-                if (avatar) avatar.textContent = user.username.charAt(0).toUpperCase();
-            } catch (e) {}
+    } catch (e) { console.error('Load products error:', e); }
+}
+
+async function loadBOMs() {
+    const tbody = document.getElementById('bomBody');
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm"></div></td></tr>`;
+    
+    try {
+        const res = await fetch(`${API_BASE}/bom`, { headers: getAuthHeaders() });
+        const data = await res.json();
+        const boms = data.boms || data || [];
+        
+        if (boms.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">No BOMs found. Create your first bill of materials!</td></tr>`;
+            return;
         }
+        
+        let totalComponents = 0;
+        
+        tbody.innerHTML = boms.map(b => {
+            const components = b.components || b.items || [];
+            totalComponents += components.length;
+            const totalCost = components.reduce((sum, c) => sum + (parseFloat(c.quantity || 0) * parseFloat(c.unit_cost || 0)), 0);
+            
+            return `
+            <tr>
+                <td><strong>${b.product_name || b.product?.name || '-'}</strong></td>
+                <td>${b.description || '-'}</td>
+                <td>${components.length}</td>
+                <td>$${totalCost.toFixed(2)}</td>
+                <td><span class="badge bg-success">Active</span></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="viewBOM(${b.id})"><i class="bi bi-eye"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteBOM(${b.id})"><i class="bi bi-trash"></i></button>
+                </td>
+            </tr>`;
+        }).join('');
+        
+        document.getElementById('totalBOMs').textContent = boms.length;
+        document.getElementById('activeBOMs').textContent = boms.length;
+        document.getElementById('totalComponents').textContent = totalComponents;
+    } catch (e) {
+        console.error('Load BOMs error:', e);
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-danger">Error loading BOMs</td></tr>`;
+    }
+}
+
+async function viewBOM(id) {
+    try {
+        const res = await fetch(`${API_BASE}/bom/${id}`, { headers: getAuthHeaders() });
+        const b = await res.json();
+        
+        const details = document.getElementById('bomDetails');
+        const components = b.components || b.items || [];
+        
+        details.innerHTML = `
+            <div class="row mb-3">
+                <div class="col-md-6"><strong>Product:</strong> ${b.product_name || '-'}</div>
+                <div class="col-md-6"><strong>Status:</strong> <span class="badge bg-success">Active</span></div>
+            </div>
+            <div class="mb-3"><strong>Description:</strong> ${b.description || '-'}</div>
+            <h6>Components</h6>
+            <table class="table table-sm">
+                <thead><tr><th>Component</th><th>Quantity</th><th>Unit Cost</th><th>Total</th></tr></thead>
+                <tbody>
+                    ${components.map(c => `
+                        <tr>
+                            <td>${c.component_name || c.product?.name || '-'}</td>
+                            <td>${c.quantity}</td>
+                            <td>$${parseFloat(c.unit_cost || 0).toFixed(2)}</td>
+                            <td>$${(parseFloat(c.quantity || 0) * parseFloat(c.unit_cost || 0)).toFixed(2)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        new bootstrap.Modal(document.getElementById('viewBomModal')).show();
+    } catch (e) { console.error('View BOM error:', e); }
+}
+
+async function deleteBOM(id) {
+    if (!confirm('Delete this BOM?')) return;
+    
+    try {
+        await fetch(`${API_BASE}/bom/${id}`, { 
+            method: 'DELETE', 
+            headers: getAuthHeaders() 
+        });
         loadBOMs();
-    </script>
-</body>
-</html>
+    } catch (e) { console.error('Delete error:', e); }
+}
+
+document.getElementById('addItemBtn').addEventListener('click', () => {
+    const div = document.createElement('div');
+    div.className = 'row g-2 mb-2 item-row';
+    div.innerHTML = `
+        <div class="col-md-5">
+            <select name="component_id" class="form-select component-select">
+                <option value="">Select Component</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <input type="number" name="quantity" class="form-control" placeholder="Qty" min="0.01" step="0.01" value="1">
+        </div>
+        <div class="col-md-3">
+            <input type="number" name="unit_cost" class="form-control" placeholder="Unit Cost" step="0.01">
+        </div>
+        <div class="col-md-2">
+            <button type="button" class="btn btn-outline-danger w-100 remove-item"><i class="bi bi-trash"></i></button>
+        </div>
+    `;
+    document.getElementById('bomItems').appendChild(div);
+    loadProductsForBOM();
+});
+
+document.getElementById('bomItems').addEventListener('click', (e) => {
+    if (e.target.closest('.remove-item')) {
+        e.target.closest('.item-row').remove();
+    }
+});
+
+document.getElementById('saveBomBtn').addEventListener('click', async () => {
+    const form = document.getElementById('bomForm');
+    const items = [];
+    document.querySelectorAll('.item-row').forEach(row => {
+        const componentId = row.querySelector('[name="component_id"]').value;
+        const qty = row.querySelector('[name="quantity"]').value;
+        const cost = row.querySelector('[name="unit_cost"]').value;
+        if (componentId) {
+            items.push({ component_id: componentId, quantity: parseFloat(qty), unit_cost: parseFloat(cost) });
+        }
+    });
+    
+    const data = {
+        product_id: form.product_id.value,
+        description: form.description.value,
+        items: items
+    };
+    
+    try {
+        await fetch(`${API_BASE}/bom`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+        });
+        
+        bootstrap.Modal.getInstance(document.getElementById('bomModal')).hide();
+        form.reset();
+        loadBOMs();
+    } catch (e) { console.error('Save error:', e); }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadProductsForBOM();
+    loadBOMs();
+});
+</script>
+{% endblock %}
